@@ -11,13 +11,13 @@ import { Budgets } from './pages/Budgets'
 import { Overview } from './pages/Overview'
 import { Subscriptions } from './pages/Subscriptions'
 import { Transactions } from './pages/Transactions'
-import type { Budget, CategoryId, Cycle, Goal, Page, Recurring, Subscription, Transaction } from './types'
+import type { Budget, CategoryId, Cycle, Goal, Installment, Page, Recurring, Subscription, Transaction } from './types'
 import { useStored } from './useStored'
 
 const TITLES: Record<Page, { title: string; subtitle: string }> = {
   overview: { title: 'Visão geral', subtitle: 'Como está o seu dinheiro este mês' },
   transactions: { title: 'Transações', subtitle: 'Todas as receitas e despesas' },
-  subscriptions: { title: 'Assinaturas', subtitle: 'Controle o que renova no seu cartão' },
+  subscriptions: { title: 'Assinaturas e parcelas', subtitle: 'O que renova no cartão e o que você ainda está pagando' },
   budgets: { title: 'Orçamentos', subtitle: 'Limites de gasto por categoria' },
   assistant: { title: 'Assistente', subtitle: 'Tire dúvidas sobre o seu dinheiro' },
 }
@@ -33,6 +33,7 @@ export default function App() {
   const [subs, setSubs] = useStored<Subscription[]>('fd:subs', seedSubscriptions)
   const [budgets, setBudgets] = useStored<Budget[]>('fd:budgets', seedBudgets)
   const [goals, setGoals] = useStored<Goal[]>('fd:goals', seedGoals)
+  const [installments, setInstallments] = useStored<Installment[]>('fd:installments', () => [])
   const [rules, setRules] = useStored<Recurring[]>('fd:rules', () => [])
   const [form, setForm] = useState<{ tx?: Transaction; repeat?: boolean } | null>(null)
   const [tick, setTick] = useState(0)
@@ -86,6 +87,7 @@ export default function App() {
 
         {page === 'overview' && (
           <Overview
+            installments={installments}
             txs={txs}
             subs={subs}
             budgets={budgets}
@@ -108,6 +110,9 @@ export default function App() {
         )}
         {page === 'subscriptions' && (
           <Subscriptions
+            installments={installments}
+            onSaveInstallment={(i, id) => setInstallments((l) => (id ? l.map((x) => (x.id === id ? { ...i, id } : x)) : [...l, { ...i, id: uid() }]))}
+            onDeleteInstallment={(id) => setInstallments((l) => l.filter((x) => x.id !== id))}
             subs={subs}
             onAdd={(s) => setSubs((l) => [...l, { ...s, id: uid(), active: true }])}
             onToggle={(id) => setSubs((l) => l.map((s) => (s.id === id ? { ...s, active: !s.active } : s)))}
@@ -124,11 +129,11 @@ export default function App() {
             }
           />
         )}
-        {page === 'assistant' && <Assistant txs={txs} subs={subs} budgets={budgets} />}
+        {page === 'assistant' && <Assistant txs={txs} subs={subs} budgets={budgets} installments={installments} />}
       </main>
       {dataOpen && (
         <DataModal
-          data={{ txs, subs, budgets, goals, recurring: rules }}
+          data={{ txs, subs, budgets, goals, recurring: rules, installments }}
           onClose={() => setDataOpen(false)}
           onImport={(d) => {
             setTxs(d.txs)
@@ -136,8 +141,10 @@ export default function App() {
             setBudgets(d.budgets)
             setGoals(d.goals)
             setRules(d.recurring)
+            setInstallments(d.installments)
           }}
           onClear={() => {
+            setInstallments([])
             setRules([])
             setTxs([])
             setSubs([])
@@ -145,6 +152,7 @@ export default function App() {
             setGoals([])
           }}
           onReset={() => {
+            setInstallments([])
             setRules([])
             setTxs(seedTransactions())
             setSubs(seedSubscriptions())

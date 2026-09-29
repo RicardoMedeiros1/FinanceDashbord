@@ -59,3 +59,15 @@ export interface Recurring {
   generated: number // quantas ocorrências já viraram lançamento
   active: boolean
 }
+
+/** Compra parcelada / dívida com terceiros. */
+export interface Installment {
+  id: string
+  name: string
+  lender: string // com quem (opcional), ex.: "João (cartão)"
+  amount: number // valor de cada parcela
+  count: number // número de parcelas
+  purchaseDate: string // yyyy-mm-dd
+  firstDate: string // vencimento da 1ª parcela, yyyy-mm-dd
+  color: string
+}

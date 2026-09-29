@@ -1,6 +1,6 @@
 import { CATEGORIES } from './categories'
-import { brl, daysUntil, inMonth, monthKey, monthlyCost, nextCharge, shiftMonth, sumBy } from './lib'
-import type { Budget, CategoryId, Subscription, Transaction } from './types'
+import { brl, daysUntil, inMonth, installmentStatus, monthKey, monthLong, monthlyCost, nextCharge, parseISO, shiftMonth, sumBy } from './lib'
+import type { Budget, CategoryId, Installment, Subscription, Transaction } from './types'
 
 export interface Insight {
   id: string
@@ -23,6 +23,7 @@ export function buildInsights(
   txs: Transaction[],
   subs: Subscription[],
   budgets: Budget[],
+  installments: Installment[] = [],
 ): Insight[] {
   const now = new Date()
   const cur = monthKey(now)
@@ -87,17 +88,32 @@ export function buildInsights(
       text: `Custam ${brl(monthly)}/mês (${brl(monthly * 12)}/ano). A mais cara é ${top.name}, com ${brl(monthlyCost(top))}/mês.`,
     })
   }
-  const soon = active
-    .map((s) => ({ s, d: daysUntil(nextCharge(s)) }))
+  const open = installments.map((i) => ({ i, st: installmentStatus(i) })).filter((x) => x.st.remaining > 0)
+  if (open.length) {
+    const monthlyInst = open.reduce((a, x) => a + x.i.amount, 0)
+    const owed = open.reduce((a, x) => a + x.st.remainingAmount, 0)
+    const last = open.map((x) => x.st.end).sort().pop()!
+    out.push({
+      id: 'inst',
+      tone: 'info',
+      title: `${open.length} ${open.length > 1 ? 'parcelamentos' : 'parcelamento'} em aberto`,
+      text: `Faltam ${brl(owed)} (${brl(monthlyInst)}/mês). O último termina em ${monthLong(last.slice(0, 7)).toLowerCase()}.`,
+    })
+  }
+
+  const soon = [
+    ...active.map((s) => ({ name: s.name, price: s.price, d: daysUntil(nextCharge(s)) })),
+    ...open.map((x) => ({ name: x.i.name, price: x.i.amount, d: daysUntil(parseISO(x.st.next!)) })),
+  ]
     .filter((x) => x.d <= 5)
     .sort((a, b) => a.d - b.d)
   if (soon.length) {
-    const total = soon.reduce((s, x) => s + x.s.price, 0)
+    const total = soon.reduce((s, x) => s + x.price, 0)
     out.push({
       id: 'soon',
       tone: 'info',
       title: 'Cobranças chegando',
-      text: `${soon.map((x) => x.s.name).join(', ')} ${soon.length > 1 ? 'renovam' : 'renova'} nos próximos 5 dias (${brl(total)}).`,
+      text: `${soon.map((x) => x.name).join(', ')} ${soon.length > 1 ? 'vencem' : 'vence'} nos próximos 5 dias (${brl(total)}).`,
     })
   }
 
@@ -142,10 +158,11 @@ export const SUGGESTIONS = [
   'Quais assinaturas posso cortar?',
   'Como estão meus orçamentos?',
   'Como economizar mais?',
+  'Quanto ainda devo em parcelas?',
 ]
 
 /** Assistente local: responde por palavras-chave usando os seus dados (não é um LLM). */
-export function answer(question: string, txs: Transaction[], subs: Subscription[], budgets: Budget[]): string {
+export function answer(question: string, txs: Transaction[], subs: Subscription[], budgets: Budget[], installments: Installment[] = []): string {
   const q = norm(question)
   const cur = monthKey(new Date())
   const list = txs.filter((t) => inMonth(t, cur))
@@ -153,6 +170,15 @@ export function answer(question: string, txs: Transaction[], subs: Subscription[
   const expense = sumBy(list, 'expense')
   const byCat = [...spendByCategory(list)].sort((a, b) => b[1] - a[1])
 
+  if (/parcela|divida|devo|emprest|financ/.test(q)) {
+    const open = installments.map((i) => ({ i, st: installmentStatus(i) })).filter((x) => x.st.remaining > 0)
+    if (!open.length) return 'Você não tem parcelas em aberto. 🎉'
+    const owed = open.reduce((a, x) => a + x.st.remainingAmount, 0)
+    const monthly = open.reduce((a, x) => a + x.i.amount, 0)
+    return `Você deve ${brl(owed)} em ${open.length} ${open.length > 1 ? 'parcelamentos' : 'parcelamento'} (${brl(monthly)}/mês):\n${open
+      .map((x) => `• ${x.i.name}${x.i.lender ? ` (${x.i.lender})` : ''}: ${x.st.paid}/${x.i.count} pagas, faltam ${brl(x.st.remainingAmount)}, termina em ${monthLong(x.st.end.slice(0, 7)).toLowerCase()}`)
+      .join('\n')}`
+  }
   if (/assinatura|renova|cancel|cortar/.test(q)) {
     const active = subs.filter((s) => s.active).sort((a, b) => monthlyCost(b) - monthlyCost(a))
     if (!active.length) return 'Você não tem assinaturas ativas. 🎉'

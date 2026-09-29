@@ -1,11 +1,11 @@
 import { ArrowUp } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { answer, SUGGESTIONS } from '../insights'
-import type { Budget, Subscription, Transaction } from '../types'
+import type { Budget, Installment, Subscription, Transaction } from '../types'
 
 interface Msg { from: 'me' | 'bot'; text: string }
 
-export function Assistant({ txs, subs, budgets }: { txs: Transaction[]; subs: Subscription[]; budgets: Budget[] }) {
+export function Assistant({ txs, subs, budgets, installments }: { txs: Transaction[]; subs: Subscription[]; budgets: Budget[]; installments: Installment[] }) {
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [text, setText] = useState('')
   const end = useRef<HTMLDivElement>(null)
@@ -14,7 +14,7 @@ export function Assistant({ txs, subs, budgets }: { txs: Transaction[]; subs: Su
 
   const ask = (q: string) => {
     if (!q.trim()) return
-    setMsgs((m) => [...m, { from: 'me', text: q }, { from: 'bot', text: answer(q, txs, subs, budgets) }])
+    setMsgs((m) => [...m, { from: 'me', text: q }, { from: 'bot', text: answer(q, txs, subs, budgets, installments) }])
     setText('')
   }
 

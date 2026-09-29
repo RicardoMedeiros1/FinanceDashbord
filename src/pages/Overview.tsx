@@ -7,8 +7,8 @@ import { Insights } from '../components/Insights'
 import { Money } from '../components/Money'
 import { StatCard } from '../components/StatCard'
 import { buildInsights } from '../insights'
-import { brl, brlShort, daysUntil, formatDate, inMonth, monthKey, monthLabel, monthlyCost, nextCharge, shiftMonth, sumBy, toISO } from '../lib'
-import type { Budget, Goal, Page, Subscription, Transaction } from '../types'
+import { brl, brlShort, daysUntil, formatDate, installmentStatus, parseISO, inMonth, monthKey, monthLabel, monthlyCost, nextCharge, shiftMonth, sumBy, toISO } from '../lib'
+import type { Budget, Goal, Installment, Page, Subscription, Transaction } from '../types'
 
 const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null)
 
@@ -17,6 +17,7 @@ const tooltipStyle = { background: '#1c1c1c', border: '1px solid #2a2a2a', borde
 interface Props {
   txs: Transaction[]
   subs: Subscription[]
+  installments: Installment[]
   budgets: Budget[]
   goals: Goal[]
   onNavigate: (p: Page) => void
@@ -24,7 +25,7 @@ interface Props {
   onDeposit: (id: string, amount: number) => void
 }
 
-export function Overview({ txs, subs, budgets, goals, onNavigate, onAddGoal, onDeposit }: Props) {
+export function Overview({ txs, subs, installments, budgets, goals, onNavigate, onAddGoal, onDeposit }: Props) {
   const [range, setRange] = useState<'30d' | '6m'>('30d')
 
   const months = useMemo(
@@ -56,10 +57,15 @@ export function Overview({ txs, subs, budgets, goals, onNavigate, onAddGoal, onD
     [txs],
   )
 
-  const insights = useMemo(() => buildInsights(txs, subs, budgets), [txs, subs, budgets])
+  const insights = useMemo(() => buildInsights(txs, subs, budgets, installments), [txs, subs, budgets, installments])
 
-  const upcoming = activeSubs
-    .map((s) => ({ s, date: nextCharge(s) }))
+  const upcoming = [
+    ...activeSubs.map((x) => ({ id: x.id, name: x.name, color: x.color, date: nextCharge(x), price: x.price, note: '' })),
+    ...installments.flatMap((x) => {
+      const st = installmentStatus(x)
+      return st.next ? [{ id: x.id, name: x.name, color: x.color, date: parseISO(st.next), price: x.amount, note: `parcela ${st.paid + 1}/${x.count}` }] : []
+    }),
+  ]
     .sort((a, b) => a.date.getTime() - b.date.getTime())
     .slice(0, 6)
 
@@ -131,20 +137,21 @@ export function Overview({ txs, subs, budgets, goals, onNavigate, onAddGoal, onD
               <button className="link" onClick={() => onNavigate('subscriptions')}>Ver todos</button>
             </div>
             <ul className="list compact">
-              {upcoming.map(({ s, date }) => {
+              {upcoming.map((s) => {
+                const date = s.date
                 const d = daysUntil(date)
                 return (
                   <li key={s.id}>
                     <span className="logo" style={{ background: s.color }}>{s.name[0]}</span>
                     <div className="grow">
                       <strong>{s.name}</strong>
-                      <span className="muted small">{d === 0 ? 'Hoje' : d === 1 ? 'Amanhã' : formatDate(toISO(date))}</span>
+                      <span className="muted small">{d === 0 ? 'Hoje' : d === 1 ? 'Amanhã' : formatDate(toISO(date))}{s.note ? ` · ${s.note}` : ''}</span>
                     </div>
                     <strong>{brl(s.price)}</strong>
                   </li>
                 )
               })}
-              {upcoming.length === 0 && <li className="muted">Nenhuma assinatura ativa.</li>}
+              {upcoming.length === 0 && <li className="muted">Nenhum pagamento à vista.</li>}
             </ul>
           </div>
           <Insights items={insights} onNavigate={onNavigate} />

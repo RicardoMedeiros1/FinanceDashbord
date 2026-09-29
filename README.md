@@ -13,6 +13,7 @@ React + TypeScript + Vite, gráficos com Recharts. Os dados ficam salvos no `loc
 - **Transações**: busca, filtro por mês/tipo, adicionar, **editar** e excluir.
 - **Recorrentes**: cadastre salário, aluguel e contas fixas (semanal, mensal ou anual) uma vez; o app lança sozinho quando a data chega, sem duplicar e sem recriar o que você apagou. Dá para pausar, reativar e excluir a regra (os lançamentos já gerados ficam).
 - **Assinaturas**: custo mensal/anual, próxima renovação, pausar/reativar, adicionar e excluir.
+- **Parcelas e dívidas** (aba dentro de Assinaturas): informe o que comprou, com quem, a data da compra, o valor e o número de parcelas. O app calcula quantas já venceram, quanto falta e quando termina. Aparecem em "Próximos pagamentos", nos insights e no assistente.
 - **Orçamentos**: limite por categoria com barra de progresso.
 
 ## Rodando

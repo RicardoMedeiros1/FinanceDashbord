@@ -1,4 +1,4 @@
-import type { Cycle, Recurring, Subscription, Transaction } from './types'
+import type { Cycle, Installment, Recurring, Subscription, Transaction } from './types'
 
 export const brl = (n: number) =>
   n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
@@ -105,4 +105,30 @@ export function skipToToday(r: Recurring, today = toISO(new Date())): Recurring 
   let n = r.generated
   for (let guard = 0; guard < 1000 && occurrence(r.anchor, r.cycle, n) < today; guard++) n++
   return { ...r, generated: n }
+}
+
+export interface InstallmentStatus {
+  paid: number // parcelas com vencimento anterior a hoje
+  remaining: number
+  remainingAmount: number
+  total: number
+  next: string | null // próximo vencimento (hoje conta como pendente)
+  end: string // vencimento da última parcela
+  done: boolean
+}
+
+/** Tudo é derivado das datas: as parcelas vão "sendo pagas" conforme os vencimentos passam. */
+export function installmentStatus(i: Installment, today = toISO(new Date())): InstallmentStatus {
+  let paid = 0
+  while (paid < i.count && occurrence(i.firstDate, 'monthly', paid) < today) paid++
+  const remaining = i.count - paid
+  return {
+    paid,
+    remaining,
+    remainingAmount: remaining * i.amount,
+    total: i.count * i.amount,
+    next: remaining > 0 ? occurrence(i.firstDate, 'monthly', paid) : null,
+    end: occurrence(i.firstDate, 'monthly', i.count - 1),
+    done: remaining === 0,
+  }
 }

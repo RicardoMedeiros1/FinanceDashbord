@@ -329,3 +329,9 @@ main { max-width: 1480px; margin-inline: auto; }
 .repeat select { width: auto; }
 .form label.check { flex-direction: row; align-items: center; gap: 8px; color: var(--text); }
 .form label.check input { width: auto; }
+
+/* parcelas */
+.inst-meta { display: flex; justify-content: space-between; margin-top: 6px; }
+.preview { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; line-height: 1.5; margin: 0; }
+.card.empty-rules { padding: 28px; }
+main > .segmented { align-self: flex-start; }

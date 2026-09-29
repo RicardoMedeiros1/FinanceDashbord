@@ -1,24 +1,64 @@
 import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Modal } from '../components/Modal'
+import { InstallmentForm } from '../components/InstallmentForm'
 import { SubscriptionForm } from '../components/SubscriptionForm'
+import { Installments } from './Installments'
 import { brl, daysUntil, formatDate, monthlyCost, nextCharge, toISO } from '../lib'
-import type { Subscription } from '../types'
+import type { Installment, Subscription } from '../types'
 
 interface Props {
+  installments: Installment[]
+  onSaveInstallment: (i: Omit<Installment, 'id'>, id?: string) => void
+  onDeleteInstallment: (id: string) => void
   subs: Subscription[]
   onAdd: (s: Omit<Subscription, 'id' | 'active'>) => void
   onToggle: (id: string) => void
   onDelete: (id: string) => void
 }
 
-export function Subscriptions({ subs, onAdd, onToggle, onDelete }: Props) {
+export function Subscriptions({ subs, onAdd, onToggle, onDelete, installments, onSaveInstallment, onDeleteInstallment }: Props) {
+  const [tab, setTab] = useState<'subs' | 'installments'>('subs')
   const [open, setOpen] = useState(false)
+  const [instForm, setInstForm] = useState<{ item?: Installment } | null>(null)
   const active = subs.filter((s) => s.active)
   const monthly = active.reduce((s, x) => s + monthlyCost(x), 0)
 
+  const tabs = (
+    <div className="segmented">
+      <button className={tab === 'subs' ? 'on' : ''} onClick={() => setTab('subs')}>Assinaturas</button>
+      <button className={tab === 'installments' ? 'on' : ''} onClick={() => setTab('installments')}>Parcelas{installments.length ? ` (${installments.length})` : ''}</button>
+    </div>
+  )
+
+  if (tab === 'installments') {
+    return (
+      <>
+        {tabs}
+        <Installments
+          items={installments}
+          onNew={() => setInstForm({})}
+          onEdit={(item) => setInstForm({ item })}
+          onDelete={onDeleteInstallment}
+        />
+        {instForm && (
+          <Modal title={instForm.item ? 'Editar parcela' : 'Nova parcela'} onClose={() => setInstForm(null)}>
+            <InstallmentForm
+              initial={instForm.item}
+              onSave={(i) => {
+                onSaveInstallment(i, instForm.item?.id)
+                setInstForm(null)
+              }}
+            />
+          </Modal>
+        )}
+      </>
+    )
+  }
+
   return (
     <>
+      {tabs}
       <div className="grid stats three">
         <div className="card stat">
           <span className="muted">Custo mensal</span>

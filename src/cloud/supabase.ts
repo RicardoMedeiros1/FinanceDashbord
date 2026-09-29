@@ -1,16 +1,10 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { friendlyAuthError } from './authError'
 import type { Auth, Remote, Row, Session } from './types'
 
 const BUCKET = 'receipts'
 const PAGE = 1000
 const CHUNK = 500
-
-function friendly(message: string, name?: string): string {
-  if (/invalid login credentials/i.test(message)) return 'E-mail ou senha incorretos.'
-  if (/email not confirmed/i.test(message)) return 'Confirme o e-mail antes de entrar.'
-  if (name === 'AuthRetryableFetchError' || /failed to fetch|network/i.test(message)) return 'Sem conexão com o servidor. Verifique a internet.'
-  return 'Não foi possível entrar. Tente novamente.'
-}
 
 function createRemote(client: SupabaseClient, userId: string): Remote {
   return {
@@ -88,7 +82,7 @@ export function createSupabaseAuth(url: string, key: string): Auth {
     },
     async signIn(email, password) {
       const { error } = await client.auth.signInWithPassword({ email, password })
-      if (error) throw new Error(friendly(error.message, error.name))
+      if (error) throw new Error(friendlyAuthError(error))
     },
     async signOut() {
       await client.auth.signOut()

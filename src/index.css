@@ -308,3 +308,10 @@ input:focus, select:focus { border-color: #555; }
 }
 .btn.danger { color: var(--coral); border-color: rgba(232, 74, 69, 0.4); background: rgba(232, 74, 69, 0.08); }
 .btn.danger:hover { border-color: var(--coral); }
+
+/* telas largas: conteúdo centralizado e mais generoso */
+main { max-width: 1480px; margin-inline: auto; }
+@media (min-width: 1700px) {
+  main { max-width: 1600px; padding-inline: 48px; }
+  body { font-size: 15px; }
+}

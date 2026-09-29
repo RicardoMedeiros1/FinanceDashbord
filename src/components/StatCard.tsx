@@ -1,4 +1,4 @@
-import { Bar, BarChart, Cell, ResponsiveContainer } from 'recharts'
+import { Bar, BarChart, Cell, ResponsiveContainer, YAxis } from 'recharts'
 import type { ReactNode } from 'react'
 
 interface Props {
@@ -15,7 +15,8 @@ interface Props {
 export function StatCard({ label, icon, value, spark, color, delta, invert, foot = 'Mês anterior' }: Props) {
   const good = delta == null ? true : invert ? delta <= 0 : delta >= 0
   const max = Math.max(...spark.map(Math.abs), 1)
-  const data = spark.map((v, i) => ({ v: Math.max(Math.abs(v), max * 0.08), i }))
+  const empty = spark.every((v) => v === 0)
+  const data = spark.map((v, i) => ({ v: empty ? 0 : Math.max(Math.abs(v), max * 0.08), i }))
   return (
     <div className="card stat">
       <div className="stat-top">
@@ -30,6 +31,7 @@ export function StatCard({ label, icon, value, spark, color, delta, invert, foot
         <div className="spark">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={data} barCategoryGap={2}>
+              <YAxis hide domain={[0, max]} />
               <Bar dataKey="v" radius={[2, 2, 0, 0]} isAnimationActive={false}>
                 {data.map((_, i) => (
                   <Cell key={i} fill={color} fillOpacity={0.35 + (0.65 * (i + 1)) / data.length} />

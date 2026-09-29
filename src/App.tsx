@@ -100,6 +100,12 @@ export default function App() {
             setBudgets(d.budgets)
             setGoals(d.goals)
           }}
+          onClear={() => {
+            setTxs([])
+            setSubs([])
+            setBudgets([])
+            setGoals([])
+          }}
           onReset={() => {
             setTxs(seedTransactions())
             setSubs(seedSubscriptions())

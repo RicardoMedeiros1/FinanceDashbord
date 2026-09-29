@@ -306,3 +306,5 @@ input:focus, select:focus { border-color: #555; }
   .topbar-right .btn.ghost { display: inline-flex; }
   .topbar-right .btn.ghost { padding: 9px 11px; }
 }
+.btn.danger { color: var(--coral); border-color: rgba(232, 74, 69, 0.4); background: rgba(232, 74, 69, 0.08); }
+.btn.danger:hover { border-color: var(--coral); }

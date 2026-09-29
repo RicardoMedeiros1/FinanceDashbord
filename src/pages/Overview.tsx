@@ -120,6 +120,7 @@ export function Overview({ txs, subs, budgets, goals, onNavigate, onAddGoal, onD
                 </li>
               ))}
             </ul>
+            {recent.length === 0 && <p className="muted">Nenhuma transação ainda. Toque em “Nova transação” para começar.</p>}
           </div>
         </div>
 

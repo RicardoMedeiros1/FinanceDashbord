@@ -1,4 +1,4 @@
-import { Download, RotateCcw, Upload } from 'lucide-react'
+import { Download, RotateCcw, Trash2, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { Budget, Goal, Subscription, Transaction } from '../types'
 import { Modal } from './Modal'
@@ -14,6 +14,7 @@ interface Props {
   data: AppData
   onImport: (d: AppData) => void
   onReset: () => void
+  onClear: () => void
   onClose: () => void
 }
 
@@ -25,7 +26,7 @@ function parse(text: string): AppData {
   return { txs: raw.txs, subs: raw.subs, budgets: raw.budgets, goals: Array.isArray(raw.goals) ? raw.goals : [] }
 }
 
-export function DataModal({ data, onImport, onReset, onClose }: Props) {
+export function DataModal({ data, onImport, onReset, onClear, onClose }: Props) {
   const file = useRef<HTMLInputElement>(null)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
@@ -58,6 +59,17 @@ export function DataModal({ data, onImport, onReset, onClose }: Props) {
       <div className="data-actions">
         <button className="btn" onClick={exportFile}><Download size={16} /> Exportar backup</button>
         <button className="btn" onClick={() => file.current?.click()}><Upload size={16} /> Importar backup</button>
+        <button
+          className="btn danger"
+          onClick={() => {
+            if (confirm('Começar do zero? Isso apaga TODAS as transações, assinaturas, orçamentos e metas deste aparelho. Exporte um backup antes se quiser guardá-los.')) {
+              onClear()
+              setMsg({ ok: true, text: 'Tudo limpo. Pode começar a lançar seus dados.' })
+            }
+          }}
+        >
+          <Trash2 size={16} /> Começar do zero
+        </button>
         <button
           className="btn ghost"
           onClick={() => {

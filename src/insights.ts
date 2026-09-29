@@ -116,6 +116,7 @@ const clamp = (n: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, n))
 export function financialHealth(txs: Transaction[], subs: Subscription[], budgets: Budget[]): Health {
   const cur = monthKey(new Date())
   const list = txs.filter((t) => inMonth(t, cur))
+  if (list.length === 0) return { score: 0, label: 'Sem dados', tip: 'Lance suas transações do mês para calcular a nota.' }
   const income = sumBy(list, 'income')
   const expense = sumBy(list, 'expense')
   const rate = income > 0 ? (income - expense) / income : 0

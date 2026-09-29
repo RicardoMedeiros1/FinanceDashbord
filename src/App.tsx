@@ -1,8 +1,14 @@
 import { Database, Plus } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { cloudReceiptStore, localReceiptStore, prepareFile, type ReceiptMeta } from './cloud/receipts'
+import { applyChanges, COLS, countLocal, SyncEngine, type Change, type Col, type Collections, type SyncStatus } from './cloud/sync'
+import type { Auth } from './cloud/types'
 import { DataModal } from './components/DataModal'
+import { InstallmentDetail } from './components/InstallmentDetail'
 import { Modal } from './components/Modal'
+import { ReceiptViewer } from './components/ReceiptViewer'
 import { Sidebar } from './components/Sidebar'
+import { SyncBadge } from './components/SyncBadge'
 import { TransactionForm } from './components/TransactionForm'
 import { seedBudgets, seedGoals, seedSubscriptions, seedTransactions } from './data'
 import { applyInstallments, applyRecurring, applySubscriptions, initialChargedUntil, installmentStatus, skipToToday, uid } from './lib'
@@ -35,7 +41,15 @@ const greeting = () => {
   return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'
 }
 
-export default function App() {
+export interface CloudSession {
+  userId: string
+  email: string
+  auth: Auth
+}
+
+const none = () => []
+
+export default function App({ cloud }: { cloud?: CloudSession }) {
   const [route, setRoute] = useState(parseHash)
   const { page, sub } = route
   useEffect(() => {
@@ -47,17 +61,122 @@ export default function App() {
     window.location.hash = `/${p}${s ? `/${s}` : ''}`
   }
   const setPage = (p: Page) => go(p)
-  const [txs, setTxs] = useStored<Transaction[]>('fd:txs', seedTransactions)
-  const [subs, setSubs] = useStored<Subscription[]>('fd:subs', seedSubscriptions)
-  const [budgets, setBudgets] = useStored<Budget[]>('fd:budgets', seedBudgets)
-  const [goals, setGoals] = useStored<Goal[]>('fd:goals', seedGoals)
-  const [installments, setInstallments] = useStored<Installment[]>('fd:installments', () => [])
-  const [rules, setRules] = useStored<Recurring[]>('fd:rules', () => [])
+
+  // Com nuvem, o app começa vazio (dados de exemplo só no modo local).
+  const [txs, setTxs] = useStored<Transaction[]>('fd:txs', cloud ? none : seedTransactions)
+  const [subs, setSubs] = useStored<Subscription[]>('fd:subs', cloud ? none : seedSubscriptions)
+  const [budgets, setBudgets] = useStored<Budget[]>('fd:budgets', cloud ? none : seedBudgets)
+  const [goals, setGoals] = useStored<Goal[]>('fd:goals', cloud ? none : seedGoals)
+  const [installments, setInstallments] = useStored<Installment[]>('fd:installments', none)
+  const [rules, setRules] = useStored<Recurring[]>('fd:rules', none)
+  const [receipts, setReceipts] = useStored<ReceiptMeta[]>('fd:receipts', none)
   const [form, setForm] = useState<{ tx?: Transaction; repeat?: boolean } | null>(null)
+  const [dataOpen, setDataOpen] = useState(false)
   const [tick, setTick] = useState(0)
 
-  // Lança como despesa o que venceu: recorrências, parcelas e assinaturas. Roda ao abrir, ao mudar os dados e ao voltar para o app.
+  // ---------- sincronização com a nuvem ----------
+  const data: Collections = { txs, subs, budgets, goals, installments, rules, receipts }
+  const dataRef = useRef<Collections>(data)
+  // espelho síncrono do estado (o motor de sync lê daqui); `apply` também o atualiza na hora
+  useLayoutEffect(() => {
+    dataRef.current = data
+  })
+
+  const setters: Record<Col, (fn: (prev: never[]) => never[]) => void> = {
+    txs: setTxs as never,
+    subs: setSubs as never,
+    budgets: setBudgets as never,
+    goals: setGoals as never,
+    installments: setInstallments as never,
+    rules: setRules as never,
+    receipts: setReceipts as never,
+  }
+  const settersRef = useRef(setters) // os setters do React são estáveis
+
+  const apply = useCallback((changes: Change[]) => {
+    // atualiza o espelho síncrono (o motor de sync lê daqui) e o estado do React
+    const next = { ...dataRef.current }
+    for (const col of COLS) {
+      next[col] = applyChanges(dataRef.current[col], col, changes)
+      settersRef.current[col]((prev) => applyChanges(prev, col, changes) as never[])
+    }
+    dataRef.current = next
+  }, [])
+
+  const remote = useMemo(() => (cloud ? cloud.auth.remote(cloud.userId) : null), [cloud])
+  const adoptedKey = cloud ? `fd:adopted:${cloud.userId}` : ''
+  const [gate, setGate] = useState<'ready' | 'ask'>(() => {
+    if (!cloud || localStorage.getItem(adoptedKey)) return 'ready'
+    return countLocal(dataRef.current) > 0 ? 'ask' : 'ready'
+  })
+  const [status, setStatus] = useState<SyncStatus>({ state: 'idle', lastSync: null })
+  const [syncReady, setSyncReady] = useState(!cloud)
+  const engineRef = useRef<SyncEngine | null>(null)
+
   useEffect(() => {
+    if (!cloud || !remote || gate !== 'ready') return
+    localStorage.setItem(adoptedKey, '1')
+    const engine = new SyncEngine(
+      remote,
+      {
+        get: () => dataRef.current,
+        apply,
+        onStatus: (s) => {
+          setStatus(s)
+          if (s.state !== 'syncing') setSyncReady(true)
+        },
+      },
+      `fd:sync:${cloud.userId}`,
+    )
+    engineRef.current = engine
+    void engine.start()
+    return () => {
+      engine.dispose()
+      engineRef.current = null
+    }
+  }, [cloud, remote, gate, adoptedKey, apply])
+
+  // toda mudança local agenda um envio
+  useEffect(() => {
+    engineRef.current?.schedule()
+  }, [txs, subs, budgets, goals, installments, rules, receipts])
+
+  // ---------- comprovantes ----------
+  const store = useMemo(() => (cloud && remote ? cloudReceiptStore(remote, cloud.userId) : localReceiptStore()), [cloud, remote])
+  // comprovantes anexados antes de ligar a nuvem continuam no aparelho onde foram anexados
+  const localStore = useMemo(() => localReceiptStore(), [])
+  const storeFor = (m: ReceiptMeta) => (m.path.startsWith('local:') ? localStore : store)
+  const [detail, setDetail] = useState<string | null>(null)
+  const [viewer, setViewer] = useState<{ url: string; meta: ReceiptMeta } | null>(null)
+
+  const attachReceipt = async (inst: Installment, k: number, file: File) => {
+    const id = `${inst.id}-p${k}`
+    const prepared = await prepareFile(file)
+    const old = receipts.find((r) => r.id === id)
+    const path = await store.put(id, prepared.blob, prepared.mime, prepared.ext)
+    const meta: ReceiptMeta = { id, installmentId: inst.id, k, name: file.name || `comprovante.${prepared.ext}`, mime: prepared.mime, size: prepared.blob.size, path, addedAt: new Date().toISOString() }
+    setReceipts((l) => [...l.filter((r) => r.id !== id), meta])
+    if (old) void storeFor(old).remove(old).catch(() => undefined)
+  }
+  const openReceipt = async (id: string) => {
+    const meta = receipts.find((r) => r.id === id)
+    if (!meta) return
+    setViewer({ url: await storeFor(meta).url(meta), meta })
+  }
+  const removeReceipt = async (id: string) => {
+    const meta = receipts.find((r) => r.id === id)
+    if (!meta) return
+    await storeFor(meta).remove(meta)
+    setReceipts((l) => l.filter((r) => r.id !== id))
+  }
+  const receiptIds = useMemo(() => new Set(receipts.map((r) => r.id)), [receipts])
+  const detailItem = installments.find((i) => i.id === detail) ?? null
+
+  // ---------- lançamentos automáticos ----------
+  // Lança como despesa o que venceu: recorrências, parcelas e assinaturas. Roda ao abrir, ao mudar os dados e ao voltar para o app.
+  // Com nuvem, espera a primeira sincronização para não gerar em cima de dados desatualizados.
+  useEffect(() => {
+    if (!syncReady) return
     const r = applyRecurring(rules)
     const q = applyInstallments(installments)
     const a = applySubscriptions(subs)
@@ -71,7 +190,7 @@ export default function App() {
         return [...added.filter((t) => !ids.has(t.id)), ...l]
       })
     }
-  }, [rules, installments, subs, tick, setRules, setInstallments, setSubs, setTxs])
+  }, [syncReady, rules, installments, subs, tick, setRules, setInstallments, setSubs, setTxs])
 
   useEffect(() => {
     const onVisible = () => document.visibilityState === 'visible' && setTick((n) => n + 1)
@@ -90,7 +209,34 @@ export default function App() {
     }
     setForm(null)
   }
-  const [dataOpen, setDataOpen] = useState(false)
+
+  const deleteInstallment = (id: string) => {
+    for (const r of receipts.filter((x) => x.installmentId === id)) void storeFor(r).remove(r).catch(() => undefined)
+    setReceipts((l) => l.filter((r) => r.installmentId !== id))
+    setInstallments((l) => l.filter((x) => x.id !== id))
+  }
+
+  const clearAll = () => {
+    for (const r of receipts) void storeFor(r).remove(r).catch(() => undefined)
+    setReceipts([])
+    setInstallments([])
+    setRules([])
+    setTxs([])
+    setSubs([])
+    setBudgets([])
+    setGoals([])
+  }
+
+  const signOut = async () => {
+    if (!cloud) return
+    if (!confirm('Sair desta conta? Os dados salvos neste aparelho serão apagados daqui (eles continuam na nuvem).')) return
+    engineRef.current?.dispose()
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('fd:'))
+      .forEach((k) => localStorage.removeItem(k))
+    await cloud.auth.signOut()
+    window.location.reload()
+  }
 
   const head = TITLES[page]
 
@@ -104,6 +250,7 @@ export default function App() {
             <p className="muted">{head.subtitle}</p>
           </div>
           <div className="topbar-right">
+            {cloud && <SyncBadge status={status} onClick={() => void engineRef.current?.sync()} />}
             <button className="btn ghost" onClick={() => setDataOpen(true)}><Database size={15} /> Dados</button>
             <button className="btn light" onClick={() => setForm({})}><Plus size={16} /> Nova transação</button>
           </div>
@@ -125,6 +272,8 @@ export default function App() {
           <Transactions
             txs={txs}
             rules={rules}
+            receiptIds={receiptIds}
+            onOpenReceipt={(id) => void openReceipt(id).catch(() => alert('Não foi possível abrir o comprovante agora.'))}
             onEdit={(tx) => setForm({ tx })}
             view={(sub === 'recurring' ? 'recurring' : 'list') satisfies TxView}
             onView={(v) => go('transactions', v === 'recurring' ? 'recurring' : '')}
@@ -139,6 +288,8 @@ export default function App() {
             tab={(sub === 'installments' ? 'installments' : 'subs') satisfies SubsTab}
             onTab={(t) => go('subscriptions', t === 'installments' ? 'installments' : '')}
             installments={installments}
+            receiptCount={(id) => receipts.filter((r) => r.installmentId === id).length}
+            onDetails={(i) => setDetail(i.id)}
             onSaveInstallment={(i, includePast, id) =>
               setInstallments((l) =>
                 id
@@ -146,7 +297,7 @@ export default function App() {
                   : [...l, { ...i, id: uid(), generated: includePast ? 0 : installmentStatus({ ...i, id: '' }).paid }],
               )
             }
-            onDeleteInstallment={(id) => setInstallments((l) => l.filter((x) => x.id !== id))}
+            onDeleteInstallment={deleteInstallment}
             subs={subs}
             onSave={(sub, includeLast, id) =>
               setSubs((l) =>
@@ -171,8 +322,31 @@ export default function App() {
         )}
         {page === 'assistant' && <Assistant txs={txs} subs={subs} budgets={budgets} installments={installments} />}
       </main>
+
+      {gate === 'ask' && (
+        <Modal title="Dados neste aparelho" onClose={() => undefined} dismissable={false}>
+          <p className="muted small data-note">
+            Este aparelho já tem {countLocal(data)} registros salvos (lançamentos, assinaturas, parcelas...). O que fazer com eles ao entrar na sua conta?
+          </p>
+          <div className="data-actions">
+            <button className="btn primary" onClick={() => setGate('ready')}>Enviar para a nuvem (juntar com o que já existe)</button>
+            <button
+              className="btn danger"
+              onClick={() => {
+                if (!confirm('Descartar os dados deste aparelho e usar só os da nuvem?')) return
+                clearAll()
+                setGate('ready')
+              }}
+            >
+              Descartar os deste aparelho
+            </button>
+          </div>
+        </Modal>
+      )}
+
       {dataOpen && (
         <DataModal
+          cloud={cloud ? { email: cloud.email, onSignOut: () => void signOut() } : undefined}
           data={{ txs, subs, budgets, goals, recurring: rules, installments }}
           onClose={() => setDataOpen(false)}
           onImport={(d) => {
@@ -183,14 +357,7 @@ export default function App() {
             setRules(d.recurring)
             setInstallments(d.installments)
           }}
-          onClear={() => {
-            setInstallments([])
-            setRules([])
-            setTxs([])
-            setSubs([])
-            setBudgets([])
-            setGoals([])
-          }}
+          onClear={clearAll}
           onReset={() => {
             setInstallments([])
             setRules([])
@@ -206,6 +373,17 @@ export default function App() {
           <TransactionForm initial={form.tx} startRepeating={form.repeat} onSave={saveForm} />
         </Modal>
       )}
+      {detailItem && (
+        <InstallmentDetail
+          item={detailItem}
+          receipts={receipts.filter((r) => r.installmentId === detailItem.id)}
+          onAttach={attachReceipt}
+          onOpen={openReceipt}
+          onRemove={removeReceipt}
+          onClose={() => setDetail(null)}
+        />
+      )}
+      {viewer && <ReceiptViewer url={viewer.url} meta={viewer.meta} onClose={() => setViewer(null)} />}
     </div>
   )
 }

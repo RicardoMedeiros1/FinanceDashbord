@@ -1,4 +1,4 @@
-import { Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react'
+import { Paperclip, Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { CATEGORIES } from '../categories'
 import { Tabs } from '../components/Tabs'
@@ -10,6 +10,8 @@ type Filter = 'all' | 'income' | 'expense'
 export type TxView = 'list' | 'recurring'
 
 interface Props {
+  receiptIds: Set<string>
+  onOpenReceipt: (id: string) => void
   view: TxView
   onView: (v: TxView) => void
   txs: Transaction[]
@@ -23,7 +25,7 @@ interface Props {
 
 const tagStyle = (color: string) => ({ '--c': color }) as React.CSSProperties
 
-export function Transactions({ view, onView, txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
+export function Transactions({ receiptIds, onOpenReceipt, view, onView, txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [month, setMonth] = useState(monthKey(new Date()))
@@ -98,6 +100,9 @@ export function Transactions({ view, onView, txs, rules, onEdit, onDelete, onNew
                   <tr key={t.id}>
                     <td>
                       {t.description}
+                      {receiptIds.has(t.id) && (
+                        <button className="rec-btn" onClick={() => onOpenReceipt(t.id)} aria-label={`Ver comprovante de ${t.description}`}><Paperclip size={13} /></button>
+                      )}
                       {t.ruleId && <Repeat size={12} className="rec-icon" aria-label="Lançado automaticamente" />}
                     </td>
                     <td><span className="tag" style={tagStyle(CATEGORIES[t.category].color)}>{CATEGORIES[t.category].label}</span></td>

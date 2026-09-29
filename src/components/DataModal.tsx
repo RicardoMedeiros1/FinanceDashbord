@@ -1,4 +1,4 @@
-import { Download, RotateCcw, Trash2, Upload } from 'lucide-react'
+import { Download, LogOut, RotateCcw, Trash2, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { Budget, Goal, Installment, Recurring, Subscription, Transaction } from '../types'
 import { Modal } from './Modal'
@@ -12,7 +12,13 @@ export interface AppData {
   installments: Installment[]
 }
 
+export interface CloudInfo {
+  email: string
+  onSignOut: () => void
+}
+
 interface Props {
+  cloud?: CloudInfo
   data: AppData
   onImport: (d: AppData) => void
   onReset: () => void
@@ -28,7 +34,7 @@ function parse(text: string): AppData {
   return { txs: raw.txs, subs: raw.subs, budgets: raw.budgets, goals: Array.isArray(raw.goals) ? raw.goals : [], recurring: Array.isArray(raw.recurring) ? raw.recurring : [], installments: Array.isArray(raw.installments) ? raw.installments : [] }
 }
 
-export function DataModal({ data, onImport, onReset, onClear, onClose }: Props) {
+export function DataModal({ cloud, data, onImport, onReset, onClear, onClose }: Props) {
   const file = useRef<HTMLInputElement>(null)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
@@ -45,7 +51,7 @@ export function DataModal({ data, onImport, onReset, onClear, onClose }: Props) 
   const importFile = async (f: File) => {
     try {
       const parsed = parse(await f.text())
-      if (!confirm('Importar este backup? Os dados atuais deste aparelho serão substituídos.')) return
+      if (!confirm(cloud ? 'Importar este backup? Os dados atuais serão substituídos aqui e nos seus outros aparelhos.' : 'Importar este backup? Os dados atuais deste aparelho serão substituídos.')) return
       onImport(parsed)
       setMsg({ ok: true, text: 'Backup importado.' })
     } catch {
@@ -55,16 +61,22 @@ export function DataModal({ data, onImport, onReset, onClear, onClose }: Props) 
 
   return (
     <Modal title="Seus dados" onClose={onClose}>
-      <p className="muted small data-note">
-        Os dados ficam salvos só neste aparelho. Para levar para outro (ou guardar uma cópia), exporte um backup e importe lá.
-      </p>
+      {cloud ? (
+        <p className="muted small data-note">
+          Conectado como <strong>{cloud.email}</strong>. Seus dados ficam na sua conta e sincronizam entre os aparelhos. O backup é uma cópia extra em arquivo; comprovantes não entram nele.
+        </p>
+      ) : (
+        <p className="muted small data-note">
+          Os dados ficam salvos só neste aparelho. Para levar para outro (ou guardar uma cópia), exporte um backup e importe lá. Comprovantes não entram no backup.
+        </p>
+      )}
       <div className="data-actions">
         <button className="btn" onClick={exportFile}><Download size={16} /> Exportar backup</button>
         <button className="btn" onClick={() => file.current?.click()}><Upload size={16} /> Importar backup</button>
         <button
           className="btn danger"
           onClick={() => {
-            if (confirm('Começar do zero? Isso apaga TODAS as transações, assinaturas, orçamentos e metas deste aparelho. Exporte um backup antes se quiser guardá-los.')) {
+            if (confirm(cloud ? 'Começar do zero? Isso apaga TODAS as transações, assinaturas, parcelas, orçamentos, metas e comprovantes da sua conta, em todos os aparelhos. Exporte um backup antes se quiser guardá-los.' : 'Começar do zero? Isso apaga TODAS as transações, assinaturas, orçamentos e metas deste aparelho. Exporte um backup antes se quiser guardá-los.')) {
               onClear()
               setMsg({ ok: true, text: 'Tudo limpo. Pode começar a lançar seus dados.' })
             }
@@ -72,17 +84,22 @@ export function DataModal({ data, onImport, onReset, onClear, onClose }: Props) 
         >
           <Trash2 size={16} /> Começar do zero
         </button>
-        <button
-          className="btn ghost"
-          onClick={() => {
-            if (confirm('Restaurar os dados de exemplo? Suas alterações serão perdidas.')) {
-              onReset()
-              setMsg({ ok: true, text: 'Dados de exemplo restaurados.' })
-            }
-          }}
-        >
-          <RotateCcw size={16} /> Restaurar exemplo
-        </button>
+        {!cloud && (
+          <button
+            className="btn ghost"
+            onClick={() => {
+              if (confirm('Restaurar os dados de exemplo? Suas alterações serão perdidas.')) {
+                onReset()
+                setMsg({ ok: true, text: 'Dados de exemplo restaurados.' })
+              }
+            }}
+          >
+            <RotateCcw size={16} /> Restaurar exemplo
+          </button>
+        )}
+        {cloud && (
+          <button className="btn ghost" onClick={cloud.onSignOut}><LogOut size={16} /> Sair desta conta</button>
+        )}
       </div>
       <input
         ref={file}

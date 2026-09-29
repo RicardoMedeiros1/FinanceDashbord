@@ -25,6 +25,11 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+        env:
+          # Variáveis (não segredos) do repositório: Settings → Secrets and variables → Actions → Variables.
+          # A chave anon é pública por desenho; quem protege os dados são as regras do banco (RLS).
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

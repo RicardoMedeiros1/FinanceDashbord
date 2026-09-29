@@ -12,6 +12,8 @@ import type { Installment, Subscription } from '../types'
 export type SubsTab = 'subs' | 'installments'
 
 interface Props {
+  receiptCount: (installmentId: string) => number
+  onDetails: (i: Installment) => void
   tab: SubsTab
   onTab: (t: SubsTab) => void
   installments: Installment[]
@@ -23,7 +25,7 @@ interface Props {
   onDelete: (id: string) => void
 }
 
-export function Subscriptions({ tab, onTab, subs, onSave, onToggle, onDelete, installments, onSaveInstallment, onDeleteInstallment }: Props) {
+export function Subscriptions({ receiptCount, onDetails, tab, onTab, subs, onSave, onToggle, onDelete, installments, onSaveInstallment, onDeleteInstallment }: Props) {
   const [subForm, setSubForm] = useState<{ item?: Subscription } | null>(null)
   const [instForm, setInstForm] = useState<{ item?: Installment } | null>(null)
   const active = subs.filter((s) => s.active)
@@ -46,6 +48,8 @@ export function Subscriptions({ tab, onTab, subs, onSave, onToggle, onDelete, in
       <>
         {tabs}
         <Installments
+          receiptCount={receiptCount}
+          onDetails={onDetails}
           items={installments}
           onNew={() => setInstForm({})}
           onEdit={(item) => setInstForm({ item })}

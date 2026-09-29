@@ -25,3 +25,8 @@ dist-ssr
 
 # Backups exportados do app (contêm dados pessoais)
 finn-backup-*.json
+
+# Variáveis locais (nunca faça commit de chaves)
+.env
+.env.local
+.env.*.local

@@ -367,3 +367,34 @@ main > .tabs { align-self: flex-start; }
 @media (max-width: 760px) {
   .nav-item .nav-label { display: block; }
 }
+
+/* login, splash, sincronização, comprovantes */
+.splash { min-height: 100vh; display: grid; place-items: center; }
+.login { min-height: 100vh; display: grid; place-items: center; padding: 20px; }
+.login-card { width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 28px; display: flex; flex-direction: column; gap: 14px; }
+.login-card h1 { font-size: 26px; }
+.login-card label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 13px; }
+.login-card .brand-mark { width: 40px; height: 40px; }
+.login-card p { margin: 0; }
+
+.sync-badge { display: inline-flex; align-items: center; gap: 6px; padding: 7px 11px; border-radius: 99px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 12px; }
+.sync-badge:hover { color: var(--text); border-color: #444; }
+.sync-badge.ok { color: var(--green); }
+.sync-badge.offline, .sync-badge.error { color: var(--amber); }
+.sync-badge.syncing svg { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.detail-sub { margin-bottom: 12px; }
+.parcels { display: flex; flex-direction: column; max-height: 60vh; overflow-y: auto; }
+.parcels li { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.parcels li:last-child { border-bottom: 0; }
+.parcels li.future { opacity: 0.6; }
+.parcel-n { width: 44px; color: var(--muted); font-size: 13px; }
+.parcel-actions { display: flex; gap: 6px; align-items: center; margin-left: auto; }
+.parcel-actions .icon-btn { width: 30px; height: 30px; }
+.parcel-actions .pill-btn { display: inline-flex; align-items: center; gap: 5px; }
+.details-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: 6px; }
+.rec-btn { border: 0; background: none; color: var(--accent); padding: 0 0 0 6px; vertical-align: -2px; }
+.receipt-img { max-width: 100%; max-height: 62vh; display: block; margin: 0 auto 14px; border-radius: 12px; background: #fff; }
+.receipt-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.receipt-actions a { text-decoration: none; }

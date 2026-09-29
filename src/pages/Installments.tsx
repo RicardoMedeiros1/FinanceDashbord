@@ -1,15 +1,17 @@
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Paperclip, Pencil, Plus, Trash2 } from 'lucide-react'
 import { brl, formatDate, installmentStatus, monthLong } from '../lib'
 import type { Installment } from '../types'
 
 interface Props {
+  receiptCount: (installmentId: string) => number
+  onDetails: (i: Installment) => void
   items: Installment[]
   onNew: () => void
   onEdit: (i: Installment) => void
   onDelete: (id: string) => void
 }
 
-export function Installments({ items, onNew, onEdit, onDelete }: Props) {
+export function Installments({ items, receiptCount, onDetails, onNew, onEdit, onDelete }: Props) {
   const rows = items
     .map((i) => ({ i, st: installmentStatus(i) }))
     .sort((a, b) => Number(a.st.done) - Number(b.st.done) || (a.st.next ?? '9').localeCompare(b.st.next ?? '9'))
@@ -45,7 +47,7 @@ export function Installments({ items, onNew, onEdit, onDelete }: Props) {
                   <span className="muted small">{i.lender ? `Com ${i.lender}` : `Comprado em ${formatDate(i.purchaseDate)}`}</span>
                 </div>
                 <button className="icon-btn" onClick={() => onEdit(i)} aria-label={`Editar ${i.name}`}><Pencil size={15} /></button>
-                <button className="icon-btn" onClick={() => { if (confirm(`Excluir “${i.name}”? As despesas já lançadas continuam nas Transações.`)) onDelete(i.id) }} aria-label={`Excluir ${i.name}`}><Trash2 size={15} /></button>
+                <button className="icon-btn" onClick={() => { if (confirm(`Excluir “${i.name}”? As despesas já lançadas continuam nas Transações, mas os comprovantes anexados são apagados.`)) onDelete(i.id) }} aria-label={`Excluir ${i.name}`}><Trash2 size={15} /></button>
               </div>
               <div className="sub-price">{brl(i.amount)}<span className="muted small"> /mês · {i.count}x</span></div>
               <div>
@@ -57,6 +59,9 @@ export function Installments({ items, onNew, onEdit, onDelete }: Props) {
                   <span className="muted">{st.done ? 'Quitada' : `faltam ${brl(st.remainingAmount)}`}</span>
                 </div>
               </div>
+              <button className="pill-btn details-btn" onClick={() => onDetails(i)}>
+                <Paperclip size={12} /> Parcelas e comprovantes{receiptCount(i.id) ? ` (${receiptCount(i.id)})` : ''}
+              </button>
               <span className="muted small">
                 {st.done ? `Terminou em ${monthLong(st.end.slice(0, 7)).toLowerCase()}` : `Próxima: ${formatDate(st.next!)} · termina em ${monthLong(st.end.slice(0, 7)).toLowerCase()}`}
               </span>

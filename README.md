@@ -42,6 +42,15 @@ Se usar outro nome de repositório ou domínio, ajuste `BASE_PATH` (padrão `/Fi
 
 O menu lateral (ou a barra de baixo no celular) e as abas de cada página são clicáveis e só mostram o conteúdo da aba escolhida. A aba fica na URL (`#/subscriptions/installments`), então recarregar, voltar e favoritar funcionam.
 
+### Login e sincronização (opcional)
+
+Para ter os mesmos dados em todos os aparelhos, com login por e-mail e senha e comprovantes guardados na nuvem, configure o
+Supabase seguindo [docs/SUPABASE.md](docs/SUPABASE.md). Sem isso o app continua funcionando só local.
+
+- O app é local-first: funciona offline e sincroniza quando há internet, por registro (não sobrescreve o banco inteiro).
+- Cada usuário só acessa os próprios dados (regras de segurança no banco). Com o cadastro desligado, só você entra.
+- **Comprovantes** (foto ou PDF) podem ser anexados às parcelas pagas: em Assinaturas → Parcelas → *Parcelas e comprovantes*. Fotos são reduzidas antes de enviar. Sem nuvem, ficam guardados no aparelho.
+
 ### Seus dados
 
 Ficam no navegador de cada aparelho (`localStorage`). Para levar de um aparelho a outro, use **Dados → Exportar backup** e **Importar backup**.

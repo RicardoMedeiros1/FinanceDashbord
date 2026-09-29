@@ -28,6 +28,8 @@ export interface Subscription {
   billingDate: string // yyyy-mm-dd, qualquer cobrança passada/futura
   color: string
   active: boolean
+  category?: CategoryId // categoria da despesa gerada (padrão: assinaturas)
+  chargedUntil?: string // cobranças até esta data já foram processadas (yyyy-mm-dd)
 }
 
 export interface Budget {

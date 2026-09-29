@@ -5,7 +5,7 @@ import { Modal } from './components/Modal'
 import { Sidebar } from './components/Sidebar'
 import { TransactionForm } from './components/TransactionForm'
 import { seedBudgets, seedGoals, seedSubscriptions, seedTransactions } from './data'
-import { applyInstallments, applyRecurring, installmentStatus, skipToToday, uid } from './lib'
+import { applyInstallments, applyRecurring, applySubscriptions, initialChargedUntil, installmentStatus, skipToToday, uid } from './lib'
 import { Assistant } from './pages/Assistant'
 import { Budgets } from './pages/Budgets'
 import { Overview } from './pages/Overview'
@@ -56,20 +56,22 @@ export default function App() {
   const [form, setForm] = useState<{ tx?: Transaction; repeat?: boolean } | null>(null)
   const [tick, setTick] = useState(0)
 
-  // Lança como despesa o que venceu: recorrências e parcelas. Roda ao abrir, ao mudar os dados e ao voltar para o app.
+  // Lança como despesa o que venceu: recorrências, parcelas e assinaturas. Roda ao abrir, ao mudar os dados e ao voltar para o app.
   useEffect(() => {
     const r = applyRecurring(rules)
     const q = applyInstallments(installments)
+    const a = applySubscriptions(subs)
     if (r) setRules(r.rules)
     if (q) setInstallments(q.items)
-    const added = [...(r?.txs ?? []), ...(q?.txs ?? [])]
+    if (a) setSubs(a.items)
+    const added = [...(r?.txs ?? []), ...(q?.txs ?? []), ...(a?.txs ?? [])]
     if (added.length) {
       setTxs((l) => {
         const ids = new Set(l.map((t) => t.id))
         return [...added.filter((t) => !ids.has(t.id)), ...l]
       })
     }
-  }, [rules, installments, tick, setRules, setInstallments, setTxs])
+  }, [rules, installments, subs, tick, setRules, setInstallments, setSubs, setTxs])
 
   useEffect(() => {
     const onVisible = () => document.visibilityState === 'visible' && setTick((n) => n + 1)
@@ -146,7 +148,13 @@ export default function App() {
             }
             onDeleteInstallment={(id) => setInstallments((l) => l.filter((x) => x.id !== id))}
             subs={subs}
-            onAdd={(s) => setSubs((l) => [...l, { ...s, id: uid(), active: true }])}
+            onSave={(sub, includeLast, id) =>
+              setSubs((l) =>
+                id
+                  ? l.map((x) => (x.id === id ? { ...x, ...sub } : x))
+                  : [...l, { ...sub, id: uid(), active: true, chargedUntil: initialChargedUntil({ ...sub, id: '', active: true }, includeLast) }],
+              )
+            }
             onToggle={(id) => setSubs((l) => l.map((s) => (s.id === id ? { ...s, active: !s.active } : s)))}
             onDelete={(id) => setSubs((l) => l.filter((s) => s.id !== id))}
           />

@@ -39,17 +39,40 @@ export const inMonth = (t: Transaction, key: string) => t.date.startsWith(key)
 export const sumBy = (list: Transaction[], type: 'income' | 'expense') =>
   list.filter((t) => t.type === type).reduce((s, t) => s + t.amount, 0)
 
-/** Próxima cobrança de uma assinatura, a partir de hoje. */
+const subCycle = (s: Subscription): Cycle => (s.cycle === 'monthly' ? 'monthly' : 'yearly')
+const subOccurrence = (s: Subscription, n: number) => occurrence(s.billingDate, subCycle(s), n)
+
+/** Próxima cobrança de uma assinatura, a partir de hoje (hoje conta). */
 export function nextCharge(sub: Subscription, today = new Date()): Date {
-  const base = parseISO(sub.billingDate)
-  const start = new Date(today.getFullYear(), today.getMonth(), today.getDate())
-  const d = new Date(base)
-  const step = sub.cycle === 'monthly' ? 1 : 12
-  let guard = 0
-  while (d < start && guard++ < 600) {
-    d.setMonth(d.getMonth() + step)
+  const start = toISO(today)
+  for (let n = 0; n < 2000; n++) {
+    const d = subOccurrence(sub, n)
+    if (d >= start) return parseISO(d)
   }
-  return d
+  return parseISO(sub.billingDate)
+}
+
+/** Cobrança mais recente até hoje (ou null se a 1ª ainda está no futuro). */
+export function lastCharge(sub: Subscription, today = toISO(new Date())): string | null {
+  let last: string | null = null
+  for (let n = 0; n < 2000; n++) {
+    const d = subOccurrence(sub, n)
+    if (d > today) break
+    last = d
+  }
+  return last
+}
+
+const addDays = (iso: string, days: number) => {
+  const d = parseISO(iso)
+  d.setDate(d.getDate() + days)
+  return toISO(d)
+}
+
+/** Ponto de partida das cobranças de uma assinatura nova: por padrão só vale de hoje em diante. */
+export function initialChargedUntil(sub: Subscription, includeLast: boolean, today = toISO(new Date())) {
+  const last = lastCharge(sub, today)
+  return includeLast && last ? addDays(last, -1) : today
 }
 
 export const daysUntil = (d: Date, today = new Date()) => {
@@ -165,6 +188,35 @@ export function applyInstallments(items: Installment[], today = toISO(new Date()
     if (n === i.generated) return i
     changed = true
     return { ...i, generated: n }
+  })
+  return changed ? { items: next, txs } : null
+}
+
+/**
+ * Transforma em despesa cada cobrança de assinatura que chegou (até hoje).
+ * `chargedUntil` marca até onde já foi processado: não recria despesa apagada, não volta no tempo
+ * e uma assinatura pausada não acumula cobranças para lançar quando for reativada.
+ * Assinaturas antigas, sem esse campo, começam de ontem (só valem de agora em diante).
+ */
+export function applySubscriptions(subs: Subscription[], today = toISO(new Date())) {
+  const txs: Transaction[] = []
+  let changed = false
+  const next = subs.map((s) => {
+    if (s.chargedUntil === undefined) {
+      changed = true
+      return { ...s, chargedUntil: addDays(today, -1) }
+    }
+    if (s.active) {
+      for (let n = 0; n < 2000; n++) {
+        const date = subOccurrence(s, n)
+        if (date > today) break
+        if (date <= s.chargedUntil) continue
+        txs.push({ id: `${s.id}-c${date}`, description: s.name, amount: s.price, type: 'expense', category: s.category ?? 'assinaturas', date, ruleId: s.id })
+      }
+    }
+    if (s.chargedUntil >= today) return s
+    changed = true
+    return { ...s, chargedUntil: today }
   })
   return changed ? { items: next, txs } : null
 }

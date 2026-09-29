@@ -1,10 +1,11 @@
-import { Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { Modal } from '../components/Modal'
 import { InstallmentForm } from '../components/InstallmentForm'
 import { SubscriptionForm } from '../components/SubscriptionForm'
 import { Tabs } from '../components/Tabs'
 import { Installments } from './Installments'
+import { CATEGORIES } from '../categories'
 import { brl, daysUntil, formatDate, monthlyCost, nextCharge, toISO } from '../lib'
 import type { Installment, Subscription } from '../types'
 
@@ -17,13 +18,13 @@ interface Props {
   onSaveInstallment: (i: Omit<Installment, 'id' | 'generated'>, includePast: boolean, id?: string) => void
   onDeleteInstallment: (id: string) => void
   subs: Subscription[]
-  onAdd: (s: Omit<Subscription, 'id' | 'active'>) => void
+  onSave: (s: Omit<Subscription, 'id' | 'active' | 'chargedUntil'>, includeLast: boolean, id?: string) => void
   onToggle: (id: string) => void
   onDelete: (id: string) => void
 }
 
-export function Subscriptions({ tab, onTab, subs, onAdd, onToggle, onDelete, installments, onSaveInstallment, onDeleteInstallment }: Props) {
-  const [open, setOpen] = useState(false)
+export function Subscriptions({ tab, onTab, subs, onSave, onToggle, onDelete, installments, onSaveInstallment, onDeleteInstallment }: Props) {
+  const [subForm, setSubForm] = useState<{ item?: Subscription } | null>(null)
   const [instForm, setInstForm] = useState<{ item?: Installment } | null>(null)
   const active = subs.filter((s) => s.active)
   const monthly = active.reduce((s, x) => s + monthlyCost(x), 0)
@@ -85,7 +86,7 @@ export function Subscriptions({ tab, onTab, subs, onAdd, onToggle, onDelete, ins
 
       <div className="section-head">
         <h3>Suas assinaturas</h3>
-        <button className="btn primary" onClick={() => setOpen(true)}><Plus size={16} /> Nova assinatura</button>
+        <button className="btn primary" onClick={() => setSubForm({})}><Plus size={16} /> Nova assinatura</button>
       </div>
 
       <div className="grid subs">
@@ -100,9 +101,10 @@ export function Subscriptions({ tab, onTab, subs, onAdd, onToggle, onDelete, ins
                   <span className="logo lg" style={{ background: s.color }}>{s.name[0]}</span>
                   <div className="grow">
                     <strong>{s.name}</strong>
-                    <span className="muted small">{s.cycle === 'monthly' ? 'Mensal' : 'Anual'}</span>
+                    <span className="muted small">{s.cycle === 'monthly' ? 'Mensal' : 'Anual'} · {CATEGORIES[s.category ?? 'assinaturas'].label}</span>
                   </div>
-                  <button className="icon-btn" onClick={() => onDelete(s.id)} aria-label={`Excluir ${s.name}`}><Trash2 size={16} /></button>
+                  <button className="icon-btn" onClick={() => setSubForm({ item: s })} aria-label={`Editar ${s.name}`}><Pencil size={15} /></button>
+                  <button className="icon-btn" onClick={() => { if (confirm(`Excluir “${s.name}”? As despesas já lançadas continuam nas Transações.`)) onDelete(s.id) }} aria-label={`Excluir ${s.name}`}><Trash2 size={16} /></button>
                 </div>
                 <div className="sub-price">{brl(s.price)}<span className="muted small"> /{s.cycle === 'monthly' ? 'mês' : 'ano'}</span></div>
                 <div className="sub-foot">
@@ -118,9 +120,15 @@ export function Subscriptions({ tab, onTab, subs, onAdd, onToggle, onDelete, ins
           })}
       </div>
 
-      {open && (
-        <Modal title="Nova assinatura" onClose={() => setOpen(false)}>
-          <SubscriptionForm onSave={(s) => { onAdd(s); setOpen(false) }} />
+      {subForm && (
+        <Modal title={subForm.item ? 'Editar assinatura' : 'Nova assinatura'} onClose={() => setSubForm(null)}>
+          <SubscriptionForm
+            initial={subForm.item}
+            onSave={(sub, includeLast) => {
+              onSave(sub, includeLast, subForm.item?.id)
+              setSubForm(null)
+            }}
+          />
         </Modal>
       )}
     </>

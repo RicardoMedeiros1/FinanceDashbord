@@ -23,3 +23,19 @@ npm run build    # build de produção
 ```
 
 Na primeira abertura o app carrega dados de exemplo; use "Restaurar exemplo" para recarregá-los.
+
+## App instalável (PWA) e publicação
+
+O projeto é um PWA: depois de publicado, abra o link no celular e use **Adicionar à tela inicial** (Safari/iOS: Compartilhar → Adicionar à Tela de Início; Chrome/Android: menu → Instalar app). Funciona offline.
+
+### Publicando no GitHub Pages
+
+1. No repositório: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+2. Faça push na branch configurada em `.github/workflows/deploy.yml` (ou rode o workflow em **Actions → Deploy to GitHub Pages → Run workflow**).
+3. O app fica em `https://<seu-usuario>.github.io/FinanceDashbord/`.
+
+Se usar outro nome de repositório ou domínio, ajuste `BASE_PATH` (padrão `/FinanceDashbord/`, ver `vite.config.ts`).
+
+### Seus dados
+
+Ficam no navegador de cada aparelho (`localStorage`). Para levar de um aparelho a outro, use **Dados → Exportar backup** e **Importar backup**.

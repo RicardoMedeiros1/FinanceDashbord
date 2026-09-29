@@ -1,5 +1,6 @@
-import { Plus } from 'lucide-react'
+import { Database, Plus } from 'lucide-react'
 import { useState } from 'react'
+import { DataModal } from './components/DataModal'
 import { Modal } from './components/Modal'
 import { Sidebar } from './components/Sidebar'
 import { TransactionForm } from './components/TransactionForm'
@@ -33,6 +34,7 @@ export default function App() {
   const [budgets, setBudgets] = useStored<Budget[]>('fd:budgets', seedBudgets)
   const [goals, setGoals] = useStored<Goal[]>('fd:goals', seedGoals)
   const [newTx, setNewTx] = useState(false)
+  const [dataOpen, setDataOpen] = useState(false)
 
   const head = TITLES[page]
 
@@ -46,19 +48,7 @@ export default function App() {
             <p className="muted">{head.subtitle}</p>
           </div>
           <div className="topbar-right">
-            <button
-              className="btn ghost"
-              onClick={() => {
-                if (confirm('Restaurar os dados de exemplo? Suas alterações serão perdidas.')) {
-                  setTxs(seedTransactions())
-                  setSubs(seedSubscriptions())
-                  setBudgets(seedBudgets())
-                  setGoals(seedGoals())
-                }
-              }}
-            >
-              Restaurar exemplo
-            </button>
+            <button className="btn ghost" onClick={() => setDataOpen(true)}><Database size={15} /> Dados</button>
             <button className="btn light" onClick={() => setNewTx(true)}><Plus size={16} /> Nova transação</button>
           </div>
         </header>
@@ -100,6 +90,24 @@ export default function App() {
         )}
         {page === 'assistant' && <Assistant txs={txs} subs={subs} budgets={budgets} />}
       </main>
+      {dataOpen && (
+        <DataModal
+          data={{ txs, subs, budgets, goals }}
+          onClose={() => setDataOpen(false)}
+          onImport={(d) => {
+            setTxs(d.txs)
+            setSubs(d.subs)
+            setBudgets(d.budgets)
+            setGoals(d.goals)
+          }}
+          onReset={() => {
+            setTxs(seedTransactions())
+            setSubs(seedSubscriptions())
+            setBudgets(seedBudgets())
+            setGoals(seedGoals())
+          }}
+        />
+      )}
       {newTx && (
         <Modal title="Nova transação" onClose={() => setNewTx(false)}>
           <TransactionForm onSave={(t) => { setTxs((l) => [{ ...t, id: uid() }, ...l]); setNewTx(false) }} />

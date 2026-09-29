@@ -1,176 +1,153 @@
-import { Landmark, PiggyBank, TrendingDown, TrendingUp } from 'lucide-react'
-import { useMemo } from 'react'
-import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { CreditCard, Landmark, TrendingDown, TrendingUp } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CATEGORIES } from '../categories'
+import { GoalsCard } from '../components/GoalsCard'
 import { Insights } from '../components/Insights'
+import { Money } from '../components/Money'
 import { StatCard } from '../components/StatCard'
-import { buildInsights, spendByCategory } from '../insights'
-import { brl, brlShort, daysUntil, formatDate, inMonth, monthKey, monthLabel, nextCharge, shiftMonth, sumBy, toISO } from '../lib'
-import type { Budget, Page, Subscription, Transaction } from '../types'
+import { buildInsights } from '../insights'
+import { brl, brlShort, daysUntil, formatDate, inMonth, monthKey, monthLabel, monthlyCost, nextCharge, shiftMonth, sumBy, toISO } from '../lib'
+import type { Budget, Goal, Page, Subscription, Transaction } from '../types'
 
 const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null)
 
-const tooltipStyle = {
-  background: 'var(--surface-2)',
-  border: '1px solid var(--border)',
-  borderRadius: 10,
-  color: 'var(--text)',
+const tooltipStyle = { background: '#1c1c1c', border: '1px solid #2a2a2a', borderRadius: 10, color: '#f5f5f5' }
+
+interface Props {
+  txs: Transaction[]
+  subs: Subscription[]
+  budgets: Budget[]
+  goals: Goal[]
+  onNavigate: (p: Page) => void
+  onAddGoal: (g: Omit<Goal, 'id' | 'saved'>) => void
+  onDeposit: (id: string, amount: number) => void
 }
 
-export function Overview({ txs, subs, budgets, onNavigate }: { txs: Transaction[]; subs: Subscription[]; budgets: Budget[]; onNavigate: (p: Page) => void }) {
-  const now = new Date()
-  const cur = monthKey(now)
-  const prev = monthKey(shiftMonth(now, -1))
+export function Overview({ txs, subs, budgets, goals, onNavigate, onAddGoal, onDeposit }: Props) {
+  const [range, setRange] = useState<'30d' | '6m'>('30d')
 
-  const m = useMemo(() => {
-    const c = txs.filter((t) => inMonth(t, cur))
-    const p = txs.filter((t) => inMonth(t, prev))
-    return { income: sumBy(c, 'income'), expense: sumBy(c, 'expense'), pIncome: sumBy(p, 'income'), pExpense: sumBy(p, 'expense') }
-  }, [txs, cur, prev])
-
-  const balance = m.income - m.expense
-  const pBalance = m.pIncome - m.pExpense
-  const rate = m.income > 0 ? (balance / m.income) * 100 : 0
-
-  const series = useMemo(
+  const months = useMemo(
     () =>
       Array.from({ length: 6 }, (_, i) => {
-        const d = shiftMonth(now, i - 5)
-        const k = monthKey(d)
-        const list = txs.filter((t) => inMonth(t, k))
-        return { name: monthLabel(d), Receitas: sumBy(list, 'income'), Despesas: sumBy(list, 'expense') }
+        const d = shiftMonth(new Date(), i - 5)
+        const list = txs.filter((t) => inMonth(t, monthKey(d)))
+        const income = sumBy(list, 'income')
+        const expense = sumBy(list, 'expense')
+        return { name: monthLabel(d), Receitas: income, Despesas: expense, balance: income - expense }
       }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [txs, cur],
+    [txs],
   )
+  const m = months[5]
+  const p = months[4]
 
-  const categories = useMemo(
+  const activeSubs = subs.filter((s) => s.active)
+  const subsMonthly = activeSubs.reduce((s, x) => s + monthlyCost(x), 0)
+
+  const daily = useMemo(
     () =>
-      [...spendByCategory(txs.filter((t) => inMonth(t, cur)))]
-        .map(([id, value]) => ({ id, name: CATEGORIES[id].label, value, color: CATEGORIES[id].color }))
-        .sort((a, b) => b.value - a.value),
-    [txs, cur],
+      Array.from({ length: 30 }, (_, i) => {
+        const d = new Date()
+        d.setDate(d.getDate() - (29 - i))
+        const iso = toISO(d)
+        const list = txs.filter((t) => t.date === iso)
+        return { name: String(d.getDate()).padStart(2, '0'), Receitas: sumBy(list, 'income'), Despesas: sumBy(list, 'expense') }
+      }),
+    [txs],
   )
 
   const insights = useMemo(() => buildInsights(txs, subs, budgets), [txs, subs, budgets])
 
-  const upcoming = subs
-    .filter((s) => s.active)
+  const upcoming = activeSubs
     .map((s) => ({ s, date: nextCharge(s) }))
     .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .slice(0, 4)
+    .slice(0, 6)
 
   const recent = [...txs].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6)
+  const chart = range === '30d' ? daily : months
 
   return (
     <>
       <div className="grid stats">
-        <StatCard label="Saldo do mês" value={brl(balance)} icon={<Landmark size={16} />} delta={pBalance > 0 ? pct(balance, pBalance) : null} />
-        <StatCard label="Receitas" value={brl(m.income)} icon={<TrendingUp size={16} />} delta={pct(m.income, m.pIncome)} />
-        <StatCard label="Despesas" value={brl(m.expense)} icon={<TrendingDown size={16} />} delta={pct(m.expense, m.pExpense)} invert />
-        <StatCard label="Taxa de poupança" value={`${rate.toFixed(0)}%`} icon={<PiggyBank size={16} />} hint="da renda do mês" />
+        <StatCard label="Saldo do mês" icon={<Landmark size={13} />} value={<Money value={m.balance} />} spark={months.map((x) => x.balance)} color="#3b6ef5" delta={p.balance > 0 ? pct(m.balance, p.balance) : null} />
+        <StatCard label="Receitas" icon={<TrendingUp size={13} />} value={<Money value={m.Receitas} />} spark={months.map((x) => x.Receitas)} color="#8b3ff5" delta={pct(m.Receitas, p.Receitas)} />
+        <StatCard label="Despesas" icon={<TrendingDown size={13} />} value={<Money value={m.Despesas} />} spark={months.map((x) => x.Despesas)} color="#e0600f" delta={pct(m.Despesas, p.Despesas)} invert />
+        <StatCard label="Assinaturas / mês" icon={<CreditCard size={13} />} value={<Money value={subsMonthly} />} spark={activeSubs.map((s) => monthlyCost(s))} color="#e84a45" foot={`${activeSubs.length} ativas`} />
       </div>
 
       <div className="grid main">
-        <div className="card chart-card">
-          <div className="card-head">
-            <h3>Receitas x Despesas</h3>
-            <span className="muted small">últimos 6 meses</span>
-          </div>
-          <div className="chart-fill">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={series} barGap={4}>
-              <CartesianGrid stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="name" stroke="var(--muted)" tickLine={false} axisLine={false} />
-              <YAxis stroke="var(--muted)" tickLine={false} axisLine={false} tickFormatter={brlShort} width={64} />
-              <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(255,255,255,.04)' }} formatter={(v) => brl(Number(v))} />
-              <Bar dataKey="Receitas" fill="var(--green)" radius={[6, 6, 0, 0]} maxBarSize={28} />
-              <Bar dataKey="Despesas" fill="var(--accent)" radius={[6, 6, 0, 0]} maxBarSize={28} />
-            </BarChart>
-          </ResponsiveContainer>
-          </div>
-        </div>
-
-        <Insights items={insights} />
-
-        <div className="card">
-          <div className="card-head">
-            <h3>Gastos por categoria</h3>
-            <span className="muted small">mês atual</span>
-          </div>
-          {categories.length === 0 ? (
-            <p className="muted">Nenhuma despesa neste mês.</p>
-          ) : (
-            <div className="donut-wrap">
-              <div className="donut">
-                <ResponsiveContainer width="100%" height={180}>
-                  <PieChart>
-                    <Pie data={categories} dataKey="value" innerRadius={56} outerRadius={82} paddingAngle={3} stroke="none">
-                      {categories.map((c) => (
-                        <Cell key={c.id} fill={c.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={tooltipStyle} formatter={(v) => brl(Number(v))} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="donut-center">
-                  <span className="muted small">Total</span>
-                  <strong>{brl(m.expense)}</strong>
-                </div>
+        <div className="col">
+          <div className="card chart-card">
+            <div className="card-head">
+              <h3>Fluxo de caixa</h3>
+              <div className="segmented sm">
+                <button className={range === '30d' ? 'on' : ''} onClick={() => setRange('30d')}>30 dias</button>
+                <button className={range === '6m' ? 'on' : ''} onClick={() => setRange('6m')}>6 meses</button>
               </div>
-              <ul className="legend">
-                {categories.slice(0, 6).map((c) => (
-                  <li key={c.id}>
-                    <span className="dot" style={{ background: c.color }} />
-                    <span>{c.name}</span>
-                    <strong>{brl(c.value)}</strong>
-                  </li>
-                ))}
-              </ul>
             </div>
-          )}
-        </div>
-
-        <div className="card">
-          <div className="card-head">
-            <h3>Próximas cobranças</h3>
-            <button className="link" onClick={() => onNavigate('subscriptions')}>Ver todas</button>
+            <div className="chart-fill">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={chart} barGap={1} barCategoryGap={range === '30d' ? '18%' : '30%'}>
+                  <CartesianGrid stroke="#1f1f1f" vertical={false} />
+                  <XAxis dataKey="name" stroke="#6b6b6b" tickLine={false} axisLine={false} interval={range === '30d' ? 4 : 0} fontSize={11} />
+                  <YAxis stroke="#6b6b6b" tickLine={false} axisLine={false} tickFormatter={brlShort} width={62} fontSize={11} />
+                  <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(255,255,255,.04)' }} formatter={(v) => brl(Number(v))} />
+                  <Bar dataKey="Despesas" fill="#e9e9e9" radius={[2, 2, 0, 0]} />
+                  {range === '6m' && <Bar dataKey="Receitas" fill="#e0600f" radius={[2, 2, 0, 0]} />}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="chart-legend">
+              <span><i style={{ background: '#e9e9e9' }} /> Despesas</span>
+              {range === '6m' && <span><i style={{ background: '#e0600f' }} /> Receitas</span>}
+            </div>
           </div>
-          <ul className="list">
-            {upcoming.map(({ s, date }) => {
-              const d = daysUntil(date)
-              return (
-                <li key={s.id}>
-                  <span className="logo" style={{ background: s.color }}>{s.name[0]}</span>
+
+          <div className="card">
+            <div className="card-head">
+              <h3>Transações recentes</h3>
+              <button className="link" onClick={() => onNavigate('transactions')}>Ver todas</button>
+            </div>
+            <ul className="list">
+              {recent.map((t) => (
+                <li key={t.id}>
+                  <span className="dot lg" style={{ background: CATEGORIES[t.category].color }} />
                   <div className="grow">
-                    <strong>{s.name}</strong>
-                    <span className="muted small">{d === 0 ? 'Hoje' : d === 1 ? 'Amanhã' : `em ${d} dias`} · {formatDate(toISO(date))}</span>
+                    <strong>{t.description}</strong>
+                    <span className="muted small">{CATEGORIES[t.category].label} · {formatDate(t.date)}</span>
                   </div>
-                  <strong>{brl(s.price)}</strong>
+                  <strong className={t.type === 'income' ? 'pos' : ''}>{t.type === 'income' ? '+' : '−'} {brl(t.amount)}</strong>
                 </li>
-              )
-            })}
-            {upcoming.length === 0 && <li className="muted">Nenhuma assinatura ativa.</li>}
-          </ul>
+              ))}
+            </ul>
+          </div>
         </div>
 
-        <div className="card wide">
-          <div className="card-head">
-            <h3>Transações recentes</h3>
-            <button className="link" onClick={() => onNavigate('transactions')}>Ver todas</button>
+        <div className="col">
+          <div className="card">
+            <div className="card-head">
+              <h3>Próximos pagamentos</h3>
+              <button className="link" onClick={() => onNavigate('subscriptions')}>Ver todos</button>
+            </div>
+            <ul className="list compact">
+              {upcoming.map(({ s, date }) => {
+                const d = daysUntil(date)
+                return (
+                  <li key={s.id}>
+                    <span className="logo" style={{ background: s.color }}>{s.name[0]}</span>
+                    <div className="grow">
+                      <strong>{s.name}</strong>
+                      <span className="muted small">{d === 0 ? 'Hoje' : d === 1 ? 'Amanhã' : formatDate(toISO(date))}</span>
+                    </div>
+                    <strong>{brl(s.price)}</strong>
+                  </li>
+                )
+              })}
+              {upcoming.length === 0 && <li className="muted">Nenhuma assinatura ativa.</li>}
+            </ul>
           </div>
-          <ul className="list">
-            {recent.map((t) => (
-              <li key={t.id}>
-                <span className="dot lg" style={{ background: CATEGORIES[t.category].color }} />
-                <div className="grow">
-                  <strong>{t.description}</strong>
-                  <span className="muted small">{CATEGORIES[t.category].label} · {formatDate(t.date)}</span>
-                </div>
-                <strong className={t.type === 'income' ? 'pos' : ''}>{t.type === 'income' ? '+' : '−'} {brl(t.amount)}</strong>
-              </li>
-            ))}
-          </ul>
+          <Insights items={insights} onNavigate={onNavigate} />
+          <GoalsCard goals={goals} onAdd={onAddGoal} onDeposit={onDeposit} />
         </div>
       </div>
     </>

@@ -1,4 +1,4 @@
-import { CreditCard, LayoutDashboard, PiggyBank, Receipt, Sparkles } from 'lucide-react'
+import { Bot, CreditCard, LayoutDashboard, PiggyBank, Receipt } from 'lucide-react'
 import type { Page } from '../types'
 
 const ITEMS: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
@@ -6,22 +6,20 @@ const ITEMS: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'transactions', label: 'Transações', icon: Receipt },
   { id: 'subscriptions', label: 'Assinaturas', icon: CreditCard },
   { id: 'budgets', label: 'Orçamentos', icon: PiggyBank },
+  { id: 'assistant', label: 'Assistente', icon: Bot },
 ]
 
 export function Sidebar({ page, onNavigate }: { page: Page; onNavigate: (p: Page) => void }) {
   return (
     <aside className="sidebar">
-      <div className="brand">
-        <span className="brand-mark">
-          <Sparkles size={18} />
-        </span>
-        <span>Finn</span>
+      <div className="brand" aria-label="Finn">
+        <span className="brand-mark" />
       </div>
       <nav>
         {ITEMS.map(({ id, label, icon: Icon }) => (
-          <button key={id} className={`nav-item ${page === id ? 'active' : ''}`} onClick={() => onNavigate(id)}>
-            <Icon size={18} />
-            <span>{label}</span>
+          <button key={id} className={`nav-item ${page === id ? 'active' : ''}`} onClick={() => onNavigate(id)} title={label} aria-label={label}>
+            <Icon size={19} />
+            <span className="nav-label">{label}</span>
           </button>
         ))}
       </nav>

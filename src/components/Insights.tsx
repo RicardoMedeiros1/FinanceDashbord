@@ -1,32 +1,32 @@
-import { AlertTriangle, CheckCircle2, Info, Sparkles } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import type { Insight } from '../insights'
+import type { Page } from '../types'
 
-const ICON = { good: CheckCircle2, warn: AlertTriangle, info: Info }
-
-export function Insights({ items }: { items: Insight[] }) {
+export function Insights({ items, onNavigate }: { items: Insight[]; onNavigate: (p: Page) => void }) {
+  const [main, ...rest] = items
   return (
-    <div className="card insights">
+    <div className="card ai-card">
       <div className="card-head">
-        <h3>
-          <Sparkles size={16} /> Insights
-        </h3>
-        <span className="chip">{items.length}</span>
+        <h3><Sparkles size={15} /> Insights</h3>
+        <span className="pill">{items.length}</span>
       </div>
-      {items.length === 0 && <p className="muted">Sem novidades por enquanto.</p>}
-      <ul>
-        {items.map((i) => {
-          const Icon = ICON[i.tone]
-          return (
-            <li key={i.id} className={i.tone}>
-              <Icon size={18} />
-              <div>
-                <strong>{i.title}</strong>
-                <p>{i.text}</p>
-              </div>
-            </li>
-          )
-        })}
+      {main ? (
+        <>
+          <h4 className={`ai-title ${main.tone}`}>{main.title}</h4>
+          <p className="ai-text">{main.text}</p>
+        </>
+      ) : (
+        <p className="ai-text">Sem novidades por enquanto.</p>
+      )}
+      <ul className="ai-list">
+        {rest.slice(0, 3).map((i) => (
+          <li key={i.id}>
+            <span className={`ai-dot ${i.tone}`} />
+            <div><strong>{i.title}</strong><p>{i.text}</p></div>
+          </li>
+        ))}
       </ul>
+      <button className="btn accent" onClick={() => onNavigate('assistant')}>Perguntar ao assistente</button>
     </div>
   )
 }

@@ -1,18 +1,15 @@
-import { Plus, Search, Trash2 } from 'lucide-react'
+import { Search, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { CATEGORIES } from '../categories'
-import { Modal } from '../components/Modal'
-import { TransactionForm } from '../components/TransactionForm'
 import { brl, formatDate, monthKey, monthLong, sumBy } from '../lib'
 import type { Transaction } from '../types'
 
 type Filter = 'all' | 'income' | 'expense'
 
-export function Transactions({ txs, onAdd, onDelete }: { txs: Transaction[]; onAdd: (t: Omit<Transaction, 'id'>) => void; onDelete: (id: string) => void }) {
+export function Transactions({ txs, onDelete }: { txs: Transaction[]; onDelete: (id: string) => void }) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [month, setMonth] = useState(monthKey(new Date()))
-  const [open, setOpen] = useState(false)
 
   const months = useMemo(() => {
     const set = new Set(txs.map((t) => t.date.slice(0, 7)))
@@ -49,9 +46,6 @@ export function Transactions({ txs, onAdd, onDelete }: { txs: Transaction[]; onA
             </button>
           ))}
         </div>
-        <button className="btn primary" onClick={() => setOpen(true)}>
-          <Plus size={16} /> Nova
-        </button>
       </div>
 
       <div className="summary">
@@ -86,11 +80,6 @@ export function Transactions({ txs, onAdd, onDelete }: { txs: Transaction[]; onA
         </table>
       </div>
 
-      {open && (
-        <Modal title="Nova transação" onClose={() => setOpen(false)}>
-          <TransactionForm onSave={(t) => { onAdd(t); setOpen(false) }} />
-        </Modal>
-      )}
     </div>
   )
 }

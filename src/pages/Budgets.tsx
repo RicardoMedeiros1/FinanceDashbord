@@ -1,11 +1,13 @@
 import { Pencil } from 'lucide-react'
+import { Bar, ComposedChart, LabelList, Line, ResponsiveContainer, XAxis } from 'recharts'
+import { HealthGauge } from '../components/HealthGauge'
 import { useMemo, useState } from 'react'
 import { CATEGORIES, EXPENSE_CATEGORIES } from '../categories'
-import { spendByCategory } from '../insights'
+import { financialHealth, spendByCategory } from '../insights'
 import { brl, inMonth, monthKey } from '../lib'
-import type { Budget, CategoryId, Transaction } from '../types'
+import type { Budget, CategoryId, Subscription, Transaction } from '../types'
 
-export function Budgets({ txs, budgets, onChange }: { txs: Transaction[]; budgets: Budget[]; onChange: (category: CategoryId, limit: number) => void }) {
+export function Budgets({ txs, subs, budgets, onChange }: { txs: Transaction[]; subs: Subscription[]; budgets: Budget[]; onChange: (category: CategoryId, limit: number) => void }) {
   const spent = useMemo(() => spendByCategory(txs.filter((t) => inMonth(t, monthKey(new Date())))), [txs])
   const [editing, setEditing] = useState<CategoryId | null>(null)
   const [draft, setDraft] = useState('')
@@ -19,14 +21,34 @@ export function Budgets({ txs, budgets, onChange }: { txs: Transaction[]; budget
   const totalLimit = budgets.reduce((s, b) => s + b.limit, 0)
   const totalSpent = budgets.reduce((s, b) => s + (spent.get(b.category) ?? 0), 0)
 
+  const health = useMemo(() => financialHealth(txs, subs, budgets), [txs, subs, budgets])
+  const chartData = [
+    { name: 'Gasto', value: totalSpent },
+    { name: 'Orçamento', value: totalLimit },
+    { name: 'Restante', value: Math.max(totalLimit - totalSpent, 0) },
+  ]
+
   return (
     <>
-      <div className="card">
-        <div className="card-head">
-          <h3>Orçamento do mês</h3>
-          <span className="muted">{brl(totalSpent)} de {brl(totalLimit)}</span>
+      <div className="grid duo">
+        <div className="card">
+          <div className="card-head">
+            <h3>Visão do orçamento</h3>
+            <span className="muted small">mês atual</span>
+          </div>
+          <div className="chart-fill short">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={chartData} margin={{ top: 24, left: 8, right: 8 }}>
+                <XAxis dataKey="name" stroke="#6b6b6b" tickLine={false} axisLine={false} fontSize={12} />
+                <Bar dataKey="value" fill="#e84a45" radius={[10, 10, 0, 0]} maxBarSize={90}>
+                  <LabelList dataKey="value" position="top" fill="#e9e9e9" fontSize={12} formatter={(v) => brl(Number(v))} />
+                </Bar>
+                <Line dataKey="value" type="monotone" stroke="#fff" strokeWidth={2} dot={false} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         </div>
-        <div className="bar big"><span style={{ width: `${Math.min(100, totalLimit ? (totalSpent / totalLimit) * 100 : 0)}%` }} /></div>
+        <HealthGauge health={health} />
       </div>
 
       <div className="grid budgets">

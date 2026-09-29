@@ -34,4 +34,12 @@ export interface Budget {
   limit: number
 }
 
-export type Page = 'overview' | 'transactions' | 'subscriptions' | 'budgets'
+export type Page = 'overview' | 'transactions' | 'subscriptions' | 'budgets' | 'assistant'
+
+export interface Goal {
+  id: string
+  name: string
+  target: number
+  saved: number
+  color: string
+}

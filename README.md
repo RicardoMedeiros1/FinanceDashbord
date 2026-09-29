@@ -10,7 +10,8 @@ React + TypeScript + Vite, gráficos com Recharts. Os dados ficam salvos no `loc
 - **Assistente**: perguntas em linguagem natural sobre gastos, assinaturas, orçamentos e economia. Funciona por palavras-chave sobre os seus dados, localmente — não é um LLM.
 - **Metas de economia**: crie metas e vá guardando valores.
 - **Saúde financeira**: nota de 0 a 100 (poupança, orçamentos respeitados, peso das assinaturas), na aba Orçamentos.
-- **Transações**: busca, filtro por mês/tipo, adicionar e excluir.
+- **Transações**: busca, filtro por mês/tipo, adicionar, **editar** e excluir.
+- **Recorrentes**: cadastre salário, aluguel e contas fixas (semanal, mensal ou anual) uma vez; o app lança sozinho quando a data chega, sem duplicar e sem recriar o que você apagou. Dá para pausar, reativar e excluir a regra (os lançamentos já gerados ficam).
 - **Assinaturas**: custo mensal/anual, próxima renovação, pausar/reativar, adicionar e excluir.
 - **Orçamentos**: limite por categoria com barra de progresso.
 

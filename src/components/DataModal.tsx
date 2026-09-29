@@ -1,6 +1,6 @@
 import { Download, RotateCcw, Trash2, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
-import type { Budget, Goal, Subscription, Transaction } from '../types'
+import type { Budget, Goal, Recurring, Subscription, Transaction } from '../types'
 import { Modal } from './Modal'
 
 export interface AppData {
@@ -8,6 +8,7 @@ export interface AppData {
   subs: Subscription[]
   budgets: Budget[]
   goals: Goal[]
+  recurring: Recurring[]
 }
 
 interface Props {
@@ -23,7 +24,7 @@ function parse(text: string): AppData {
   const raw = JSON.parse(text)
   const ok = (k: string) => Array.isArray(raw?.[k])
   if (!ok('txs') || !ok('subs') || !ok('budgets')) throw new Error('formato')
-  return { txs: raw.txs, subs: raw.subs, budgets: raw.budgets, goals: Array.isArray(raw.goals) ? raw.goals : [] }
+  return { txs: raw.txs, subs: raw.subs, budgets: raw.budgets, goals: Array.isArray(raw.goals) ? raw.goals : [], recurring: Array.isArray(raw.recurring) ? raw.recurring : [] }
 }
 
 export function DataModal({ data, onImport, onReset, onClear, onClose }: Props) {

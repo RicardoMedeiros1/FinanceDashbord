@@ -1,12 +1,25 @@
-import { Search, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { CATEGORIES } from '../categories'
-import { brl, formatDate, monthKey, monthLong, sumBy } from '../lib'
-import type { Transaction } from '../types'
+import { brl, CYCLE_LABEL, formatDate, monthKey, monthLong, nextOccurrence, sumBy } from '../lib'
+import type { Recurring, Transaction } from '../types'
 
 type Filter = 'all' | 'income' | 'expense'
 
-export function Transactions({ txs, onDelete }: { txs: Transaction[]; onDelete: (id: string) => void }) {
+interface Props {
+  txs: Transaction[]
+  rules: Recurring[]
+  onEdit: (t: Transaction) => void
+  onDelete: (id: string) => void
+  onNewRecurring: () => void
+  onToggleRule: (id: string) => void
+  onDeleteRule: (id: string) => void
+}
+
+const tagStyle = (color: string) => ({ '--c': color }) as React.CSSProperties
+
+export function Transactions({ txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
+  const [view, setView] = useState<'list' | 'recurring'>('list')
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [month, setMonth] = useState(monthKey(new Date()))
@@ -29,57 +42,94 @@ export function Transactions({ txs, onDelete }: { txs: Transaction[]; onDelete: 
 
   return (
     <div className="card">
-      <div className="toolbar">
-        <div className="search">
-          <Search size={16} />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar transação…" />
-        </div>
-        <select value={month} onChange={(e) => setMonth(e.target.value)}>
-          {months.map((m) => (
-            <option key={m} value={m}>{monthLong(m)}</option>
-          ))}
-        </select>
+      <div className="view-tabs">
         <div className="segmented">
-          {(['all', 'income', 'expense'] as Filter[]).map((f) => (
-            <button key={f} className={filter === f ? 'on' : ''} onClick={() => setFilter(f)}>
-              {f === 'all' ? 'Todas' : f === 'income' ? 'Receitas' : 'Despesas'}
-            </button>
-          ))}
+          <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>Lançamentos</button>
+          <button className={view === 'recurring' ? 'on' : ''} onClick={() => setView('recurring')}>
+            <Repeat size={13} /> Recorrentes{rules.length ? ` (${rules.length})` : ''}
+          </button>
         </div>
+        {view === 'recurring' && (
+          <button className="btn primary" onClick={onNewRecurring}><Plus size={16} /> Nova recorrente</button>
+        )}
       </div>
 
-      <div className="summary">
-        <span className="muted">{rows.length} transações</span>
-        <span className="pos">+ {brl(sumBy(rows, 'income'))}</span>
-        <span>− {brl(sumBy(rows, 'expense'))}</span>
-      </div>
+      {view === 'list' ? (
+        <>
+          <div className="toolbar">
+            <div className="search">
+              <Search size={16} />
+              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar transação…" />
+            </div>
+            <select value={month} onChange={(e) => setMonth(e.target.value)}>
+              {months.map((m) => (
+                <option key={m} value={m}>{monthLong(m)}</option>
+              ))}
+            </select>
+            <div className="segmented">
+              {(['all', 'income', 'expense'] as Filter[]).map((f) => (
+                <button key={f} className={filter === f ? 'on' : ''} onClick={() => setFilter(f)}>
+                  {f === 'all' ? 'Todas' : f === 'income' ? 'Receitas' : 'Despesas'}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr><th>Descrição</th><th>Categoria</th><th>Data</th><th className="right">Valor</th><th /></tr>
-          </thead>
-          <tbody>
-            {rows.map((t) => (
-              <tr key={t.id}>
-                <td>{t.description}</td>
-                <td>
-                  <span className="tag" style={{ '--c': CATEGORIES[t.category].color } as React.CSSProperties}>{CATEGORIES[t.category].label}</span>
-                </td>
-                <td className="muted">{formatDate(t.date)}</td>
-                <td className={`right ${t.type === 'income' ? 'pos' : ''}`}>{t.type === 'income' ? '+' : '−'} {brl(t.amount)}</td>
-                <td className="right">
-                  <button className="icon-btn" onClick={() => onDelete(t.id)} aria-label="Excluir"><Trash2 size={16} /></button>
-                </td>
-              </tr>
-            ))}
-            {rows.length === 0 && (
-              <tr><td colSpan={5} className="empty">Nada por aqui.</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+          <div className="summary">
+            <span className="muted">{rows.length} {rows.length === 1 ? "transação" : "transações"}</span>
+            <span className="pos">+ {brl(sumBy(rows, 'income'))}</span>
+            <span>− {brl(sumBy(rows, 'expense'))}</span>
+          </div>
 
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Descrição</th><th>Categoria</th><th>Data</th><th className="right">Valor</th><th /></tr>
+              </thead>
+              <tbody>
+                {rows.map((t) => (
+                  <tr key={t.id}>
+                    <td>
+                      {t.description}
+                      {t.ruleId && <Repeat size={12} className="rec-icon" aria-label="Recorrente" />}
+                    </td>
+                    <td><span className="tag" style={tagStyle(CATEGORIES[t.category].color)}>{CATEGORIES[t.category].label}</span></td>
+                    <td className="muted">{formatDate(t.date)}</td>
+                    <td className={`right ${t.type === 'income' ? 'pos' : ''}`}>{t.type === 'income' ? '+' : '−'} {brl(t.amount)}</td>
+                    <td className="right actions">
+                      <button className="icon-btn" onClick={() => onEdit(t)} aria-label={`Editar ${t.description}`}><Pencil size={15} /></button>
+                      <button className="icon-btn" onClick={() => onDelete(t.id)} aria-label={`Excluir ${t.description}`}><Trash2 size={15} /></button>
+                    </td>
+                  </tr>
+                ))}
+                {rows.length === 0 && <tr><td colSpan={5} className="empty">Nada por aqui.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </>
+      ) : (
+        <ul className="list rules">
+          {rules.map((r) => (
+            <li key={r.id} className={r.active ? '' : 'off'}>
+              <span className="dot lg" style={{ background: CATEGORIES[r.category].color }} />
+              <div className="grow">
+                <strong>{r.description}</strong>
+                <span className="muted small">
+                  {CYCLE_LABEL[r.cycle]} · {r.active ? `próxima em ${formatDate(nextOccurrence(r))}` : 'pausada'} · {CATEGORIES[r.category].label}
+                </span>
+              </div>
+              <strong className={r.type === 'income' ? 'pos' : ''}>{r.type === 'income' ? '+' : '−'} {brl(r.amount)}</strong>
+              <button className={`switch ${r.active ? 'on' : ''}`} onClick={() => onToggleRule(r.id)} role="switch" aria-checked={r.active} aria-label={`${r.active ? 'Pausar' : 'Ativar'} ${r.description}`}><span /></button>
+              <button className="icon-btn" onClick={() => onDeleteRule(r.id)} aria-label={`Excluir recorrência ${r.description}`}><Trash2 size={15} /></button>
+            </li>
+          ))}
+          {rules.length === 0 && (
+            <li className="empty-rules muted">
+              Nenhuma recorrência ainda. Cadastre salário, aluguel e contas fixas uma vez e o app lança sozinho quando chegar o dia.
+            </li>
+          )}
+        </ul>
+      )}
     </div>
   )
 }

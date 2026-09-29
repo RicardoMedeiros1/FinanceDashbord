@@ -17,6 +17,7 @@ export interface Transaction {
   type: 'income' | 'expense'
   category: CategoryId
   date: string // yyyy-mm-dd
+  ruleId?: string // definido quando foi gerada por uma recorrência
 }
 
 export interface Subscription {
@@ -42,4 +43,19 @@ export interface Goal {
   target: number
   saved: number
   color: string
+}
+
+export type Cycle = 'weekly' | 'monthly' | 'yearly'
+
+/** Regra que gera um lançamento a cada ciclo, a partir de `anchor`. */
+export interface Recurring {
+  id: string
+  description: string
+  amount: number
+  type: 'income' | 'expense'
+  category: CategoryId
+  cycle: Cycle
+  anchor: string // yyyy-mm-dd da primeira ocorrência
+  generated: number // quantas ocorrências já viraram lançamento
+  active: boolean
 }

@@ -4,7 +4,7 @@ export const brl = (n: number) =>
   n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
 export const brlShort = (n: number) =>
-  Math.abs(n) >= 1000 ? `R$ ${(n / 1000).toFixed(1).replace('.', ',')}k` : `R$ ${Math.round(n)}`
+  Math.abs(n) >= 1000 ? `R$ ${(Math.round(n / 100) / 10).toFixed(1).replace('.', ',')}k` : `R$ ${Math.round(n)}`
 
 export const uid = () => Math.random().toString(36).slice(2, 10)
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CATEGORIES, EXPENSE_CATEGORIES } from '../categories'
+import { CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../categories'
 import { toISO } from '../lib'
 import type { CategoryId, Cycle, Transaction } from '../types'
 
@@ -15,11 +15,15 @@ export function TransactionForm({ initial, startRepeating, onSave }: Props) {
   const [type, setType] = useState<Transaction['type']>(initial?.type ?? 'expense')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '')
-  const [category, setCategory] = useState<CategoryId>(initial && initial.category !== 'renda' ? initial.category : 'alimentacao')
+  const [category, setCategory] = useState<CategoryId>(initial && initial.type === 'expense' ? initial.category : 'alimentacao')
+  const [incomeCat, setIncomeCat] = useState<CategoryId>(initial && initial.type === 'income' ? initial.category : (startRepeating ? 'salario' : 'variavel'))
   const [date, setDate] = useState(initial?.date ?? toISO(new Date()))
   const [repeat, setRepeat] = useState(startRepeating ?? false)
+  const [repeatTouched, setRepeatTouched] = useState(false)
   const [cycle, setCycle] = useState<Cycle>('monthly')
 
+  // salário fixo costuma se repetir todo mês: já sugere repetir, até você mexer na caixa
+  const repeating = repeatTouched ? repeat : repeat || (!initial && type === 'income' && incomeCat === 'salario')
   const value = Number(amount.replace(',', '.'))
   const valid = description.trim() && value > 0 && date
 
@@ -30,8 +34,8 @@ export function TransactionForm({ initial, startRepeating, onSave }: Props) {
         e.preventDefault()
         if (!valid) return
         onSave(
-          { description: description.trim(), amount: value, type, category: type === 'income' ? 'renda' : category, date },
-          repeat && !initial ? cycle : null,
+          { description: description.trim(), amount: value, type, category: type === 'income' ? incomeCat : category, date },
+          repeating && !initial ? cycle : null,
         )
       }}
     >
@@ -49,10 +53,29 @@ export function TransactionForm({ initial, startRepeating, onSave }: Props) {
           <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder="0,00" />
         </label>
         <label>
-          {repeat && !initial ? 'Primeira data' : 'Data'}
+          {repeating && !initial ? 'Primeira data' : 'Data'}
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
       </div>
+      {type === 'income' && (
+        <>
+          <label>
+            Tipo de receita
+            <select value={incomeCat} onChange={(e) => setIncomeCat(e.target.value as CategoryId)}>
+              {INCOME_CATEGORIES.map((c) => (
+                <option key={c} value={c}>{CATEGORIES[c].label}</option>
+              ))}
+            </select>
+          </label>
+          <p className="muted small hint">
+            {incomeCat === 'salario'
+              ? 'Salário fixo: cadastre uma vez com repetição mensal, no dia em que cai na conta.'
+              : incomeCat === 'variavel'
+                ? 'Renda variável: lance cada recebimento com o valor real (ex.: o repasse do Uber).'
+                : 'Qualquer outra entrada de dinheiro.'}
+          </p>
+        </>
+      )}
       {type === 'expense' && (
         <label>
           Categoria
@@ -66,10 +89,10 @@ export function TransactionForm({ initial, startRepeating, onSave }: Props) {
       {!initial && (
         <div className="repeat">
           <label className="check">
-            <input type="checkbox" checked={repeat} onChange={(e) => setRepeat(e.target.checked)} />
+            <input type="checkbox" checked={repeating} onChange={(e) => { setRepeat(e.target.checked); setRepeatTouched(true) }} />
             Repetir automaticamente
           </label>
-          {repeat && (
+          {repeating && (
             <select value={cycle} onChange={(e) => setCycle(e.target.value as Cycle)} aria-label="Frequência">
               <option value="monthly">Todo mês</option>
               <option value="weekly">Toda semana</option>
@@ -78,7 +101,7 @@ export function TransactionForm({ initial, startRepeating, onSave }: Props) {
           )}
         </div>
       )}
-      <button className="btn primary" disabled={!valid}>{initial ? 'Salvar alterações' : repeat ? 'Criar recorrência' : 'Salvar'}</button>
+      <button className="btn primary" disabled={!valid}>{initial ? 'Salvar alterações' : repeating ? 'Criar recorrência' : 'Salvar'}</button>
     </form>
   )
 }

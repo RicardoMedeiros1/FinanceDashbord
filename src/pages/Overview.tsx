@@ -42,6 +42,13 @@ export function Overview({ txs, subs, installments, budgets, goals, onNavigate, 
   const m = months[5]
   const p = months[4]
 
+  // detalhamento da receita do mês: salário fixo x renda variável
+  const curKey = monthKey(new Date())
+  const inc = (cat: string) => txs.filter((t) => t.type === 'income' && t.category === cat && inMonth(t, curKey)).reduce((a, t) => a + t.amount, 0)
+  const fixedIn = inc('salario')
+  const varIn = inc('variavel')
+  const incomeSplit = fixedIn > 0 || varIn > 0 ? `Fixa ${brlShort(fixedIn)} · Variável ${brlShort(varIn)}` : undefined
+
   const activeSubs = subs.filter((s) => s.active)
   const subsMonthly = activeSubs.reduce((s, x) => s + monthlyCost(x), 0)
 
@@ -76,7 +83,7 @@ export function Overview({ txs, subs, installments, budgets, goals, onNavigate, 
     <>
       <div className="grid stats">
         <StatCard label="Saldo do mês" icon={<Landmark size={13} />} value={<Money value={m.balance} />} spark={months.map((x) => x.balance)} color="#3b6ef5" delta={p.balance > 0 ? pct(m.balance, p.balance) : null} />
-        <StatCard label="Receitas" icon={<TrendingUp size={13} />} value={<Money value={m.Receitas} />} spark={months.map((x) => x.Receitas)} color="#8b3ff5" delta={pct(m.Receitas, p.Receitas)} />
+        <StatCard label="Receitas" icon={<TrendingUp size={13} />} value={<Money value={m.Receitas} />} spark={months.map((x) => x.Receitas)} color="#8b3ff5" delta={pct(m.Receitas, p.Receitas)} foot={incomeSplit} />
         <StatCard label="Despesas" icon={<TrendingDown size={13} />} value={<Money value={m.Despesas} />} spark={months.map((x) => x.Despesas)} color="#e0600f" delta={pct(m.Despesas, p.Despesas)} invert />
         <StatCard label="Assinaturas / mês" icon={<CreditCard size={13} />} value={<Money value={subsMonthly} />} spark={activeSubs.map((s) => monthlyCost(s))} color="#e84a45" foot={`${activeSubs.length} ativas`} />
       </div>

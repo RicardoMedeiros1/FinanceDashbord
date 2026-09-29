@@ -8,6 +8,9 @@ export type CategoryId =
   | 'compras'
   | 'educacao'
   | 'outros'
+  | 'trabalho'
+  | 'salario'
+  | 'variavel'
   | 'renda'
 
 export interface Transaction {

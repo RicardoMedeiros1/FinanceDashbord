@@ -18,6 +18,9 @@ export function spendByCategory(list: Transaction[]) {
   return map
 }
 
+const incomeOf = (list: Transaction[], cat: CategoryId) =>
+  list.filter((t) => t.type === 'income' && t.category === cat).reduce((a, t) => a + t.amount, 0)
+
 /** Insights gerados por regras a partir dos seus dados (tudo local). */
 export function buildInsights(
   txs: Transaction[],
@@ -43,6 +46,31 @@ export function buildInsights(
           ? { id: 'save', tone: 'info', title: 'Poupança abaixo do ideal', text: `Você guarda ${rate.toFixed(0)}% da renda. A meta comum é 20%.` }
           : { id: 'save', tone: 'warn', title: 'Gastos acima da renda', text: `Você já gastou ${brl(expense - income)} a mais do que ganhou este mês.` },
     )
+  }
+
+  // Renda fixa x variável (ex.: salário + Uber)
+  const fixed = incomeOf(curTx, 'salario')
+  const variable = incomeOf(curTx, 'variavel')
+  if (fixed > 0 && expense > 0) {
+    const cover = (fixed / expense) * 100
+    out.push(
+      cover >= 100
+        ? { id: 'fixed', tone: 'good', title: 'Salário fixo cobre as despesas', text: `Seu salário fixo (${brl(fixed)}) cobre todas as despesas do mês. A renda variável é sobra.` }
+        : { id: 'fixed', tone: 'info', title: `Salário fixo cobre ${cover.toFixed(0)}% das despesas`, text: `Faltam ${brl(expense - fixed)} para fechar o mês; isso depende da renda variável.` },
+    )
+  }
+  const work = curTx.filter((t) => t.type === 'expense' && t.category === 'trabalho').reduce((a, t) => a + t.amount, 0)
+  const past3 = [1, 2, 3].map((n) => incomeOf(txs.filter((t) => inMonth(t, monthKey(shiftMonth(now, -n)))), 'variavel'))
+  const avgVar = past3.some((v) => v > 0) ? past3.reduce((a, v) => a + v, 0) / 3 : 0
+  if (variable > 0 || work > 0) {
+    out.push({
+      id: 'variable',
+      tone: 'info',
+      title: work > 0 ? `Renda variável líquida: ${brl(variable - work)}` : `Renda variável: ${brl(variable)}`,
+      text:
+        (work > 0 ? `Entrou ${brl(variable)} e os custos do trabalho foram ${brl(work)}. ` : '') +
+        (avgVar > 0 ? `Média bruta dos 3 meses anteriores: ${brl(avgVar)}.` : 'Ainda não há meses anteriores para comparar.'),
+    })
   }
 
   // Categoria que mais cresceu em relação ao mês passado
@@ -206,8 +234,13 @@ export function answer(question: string, txs: Transaction[], subs: Subscription[
     if (!byCat.length) return 'Ainda não há despesas neste mês.'
     return `Você gastou ${brl(expense)} este mês. Maiores categorias:\n${byCat.slice(0, 4).map(([c, v]) => `• ${CATEGORIES[c].label}: ${brl(v)}`).join('\n')}`
   }
-  if (/saldo|receita|renda|ganh/.test(q)) {
-    return `Este mês: receitas de ${brl(income)}, despesas de ${brl(expense)} e saldo de ${brl(income - expense)}.`
+  if (/saldo|receita|renda|ganh|salario|uber/.test(q)) {
+    const fixed = incomeOf(list, 'salario')
+    const variable = incomeOf(list, 'variavel')
+    const work = list.filter((t) => t.type === 'expense' && t.category === 'trabalho').reduce((a, t) => a + t.amount, 0)
+    const parts = [`Este mês: receitas de ${brl(income)}, despesas de ${brl(expense)} e saldo de ${brl(income - expense)}.`]
+    if (fixed > 0 || variable > 0) parts.push(`• Salário fixo: ${brl(fixed)}\n• Renda variável: ${brl(variable)}${work > 0 ? ` (custos do trabalho ${brl(work)}, líquido ${brl(variable - work)})` : ''}`)
+    return parts.join('\n')
   }
   return 'Posso ajudar com gastos do mês, assinaturas, orçamentos e formas de economizar. Tente uma das sugestões abaixo.'
 }

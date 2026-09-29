@@ -399,3 +399,4 @@ main > .tabs { align-self: flex-start; }
 .receipt-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .receipt-actions a { text-decoration: none; }
 .backfill { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: var(--accent-soft); border: 1px solid rgba(224, 96, 15, 0.4); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; }
+.form .hint { margin: -6px 0 0; line-height: 1.4; }

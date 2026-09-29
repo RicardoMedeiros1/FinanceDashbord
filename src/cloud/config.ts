@@ -1,5 +1,7 @@
-export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined
-export const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined
+import { cleanKey, normalizeSupabaseUrl } from './normalize'
+
+export const SUPABASE_URL = normalizeSupabaseUrl(import.meta.env.VITE_SUPABASE_URL)
+export const SUPABASE_KEY = cleanKey(import.meta.env.VITE_SUPABASE_ANON_KEY)
 
 /** Servidor falso, só para testes automatizados (build com VITE_CLOUD=fake). */
 export const FAKE_CLOUD = import.meta.env.VITE_CLOUD === 'fake'

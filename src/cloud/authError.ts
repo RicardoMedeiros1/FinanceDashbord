@@ -20,6 +20,9 @@ export function friendlyAuthError(e: AuthErrorLike): string {
   if (/invalid api key|no api key|apikey/i.test(msg) || code === 'bad_jwt') {
     return 'Chave do Supabase inválida. Confira a variável SUPABASE_ANON_KEY no GitHub e publique de novo.'
   }
+  if (e.status === 404 || /invalid path/i.test(msg)) {
+    return 'Endereço do Supabase incorreto. Em SUPABASE_URL use só https://xxxx.supabase.co (sem nada depois) e publique de novo.'
+  }
   if (e.name === 'AuthRetryableFetchError' || /failed to fetch|networkerror|load failed/i.test(msg)) {
     return 'Sem conexão com o servidor. Verifique a internet e a variável SUPABASE_URL.'
   }

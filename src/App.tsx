@@ -326,7 +326,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
       {gate === 'ask' && (
         <Modal title="Dados neste aparelho" onClose={() => undefined} dismissable={false}>
           <p className="muted small data-note">
-            Este aparelho já tem {countLocal(data)} registros salvos (lançamentos, assinaturas, parcelas...). O que fazer com eles ao entrar na sua conta?
+            Este aparelho já tem {countLocal(data)} {countLocal(data) === 1 ? 'registro salvo' : 'registros salvos'} (lançamentos, assinaturas, parcelas...). O que fazer com {countLocal(data) === 1 ? 'ele' : 'eles'} ao entrar na sua conta?
           </p>
           <div className="data-actions">
             <button className="btn primary" onClick={() => setGate('ready')}>Enviar para a nuvem (juntar com o que já existe)</button>

@@ -11,7 +11,7 @@ import { Sidebar } from './components/Sidebar'
 import { SyncBadge } from './components/SyncBadge'
 import { TransactionForm } from './components/TransactionForm'
 import { seedBudgets, seedGoals, seedSubscriptions, seedTransactions } from './data'
-import { applyInstallments, applyRecurring, applySubscriptions, initialChargedUntil, installmentStatus, skipToToday, uid } from './lib'
+import { applyInstallments, applyRecurring, applySubscriptions, initialChargedUntil, installmentStatus, missingInstallmentTxs, skipToToday, uid } from './lib'
 import { Assistant } from './pages/Assistant'
 import { Budgets } from './pages/Budgets'
 import { Overview } from './pages/Overview'
@@ -171,6 +171,18 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
   }
   const receiptIds = useMemo(() => new Set(receipts.map((r) => r.id)), [receipts])
   const detailItem = installments.find((i) => i.id === detail) ?? null
+  const txIds = useMemo(() => new Set(txs.map((t) => t.id)), [txs])
+  const missingTxs = detailItem ? missingInstallmentTxs(detailItem, txIds) : []
+  const backfillInstallment = (i: Installment) => {
+    const add = missingInstallmentTxs(i, txIds)
+    if (!add.length) return
+    const paid = installmentStatus(i).paid
+    setTxs((l) => {
+      const ids = new Set(l.map((t) => t.id))
+      return [...add.filter((t) => !ids.has(t.id)), ...l]
+    })
+    setInstallments((l) => l.map((x) => (x.id === i.id ? { ...x, generated: Math.max(x.generated ?? 0, paid) } : x)))
+  }
 
   // ---------- lançamentos automáticos ----------
   // Lança como despesa o que venceu: recorrências, parcelas e assinaturas. Roda ao abrir, ao mudar os dados e ao voltar para o app.
@@ -376,6 +388,8 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
       {detailItem && (
         <InstallmentDetail
           item={detailItem}
+          missing={missingTxs.length}
+          onBackfill={() => backfillInstallment(detailItem)}
           receipts={receipts.filter((r) => r.installmentId === detailItem.id)}
           onAttach={attachReceipt}
           onOpen={openReceipt}

@@ -156,6 +156,27 @@ export function installmentStatus(i: Installment, today = toISO(new Date())): In
   }
 }
 
+/** A despesa de uma parcela. O id é determinístico: nunca há duas despesas da mesma parcela. */
+export function installmentTx(i: Installment, k: number): Transaction {
+  return {
+    id: `${i.id}-p${k}`,
+    description: `${i.name} (${k + 1}/${i.count})`,
+    amount: i.amount,
+    type: 'expense',
+    category: i.category ?? 'compras',
+    date: occurrence(i.firstDate, 'monthly', k),
+    ruleId: i.id,
+  }
+}
+
+/** Parcelas já pagas (vencidas) que não têm despesa lançada, por exemplo as anteriores ao app ou apagadas. */
+export function missingInstallmentTxs(i: Installment, existingIds: Set<string>, today = toISO(new Date())): Transaction[] {
+  const paid = installmentStatus(i, today).paid
+  const out: Transaction[] = []
+  for (let k = 0; k < paid; k++) if (!existingIds.has(`${i.id}-p${k}`)) out.push(installmentTx(i, k))
+  return out
+}
+
 /**
  * Transforma em despesa cada parcela que venceu (até hoje), até a última.
  * Os ids são determinísticos (`parcelamento-pN`), então rodar de novo não duplica,
@@ -174,15 +195,7 @@ export function applyInstallments(items: Installment[], today = toISO(new Date()
     while (n < i.count) {
       const date = occurrence(i.firstDate, 'monthly', n)
       if (date > today) break
-      txs.push({
-        id: `${i.id}-p${n}`,
-        description: `${i.name} (${n + 1}/${i.count})`,
-        amount: i.amount,
-        type: 'expense',
-        category: i.category ?? 'compras',
-        date,
-        ruleId: i.id,
-      })
+      txs.push(installmentTx(i, n))
       n++
     }
     if (n === i.generated) return i

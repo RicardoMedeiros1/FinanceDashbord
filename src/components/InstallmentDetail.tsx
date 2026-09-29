@@ -8,13 +8,16 @@ import { Modal } from './Modal'
 interface Props {
   item: Installment
   receipts: ReceiptMeta[]
+  /** parcelas pagas sem despesa lançada */
+  missing: number
+  onBackfill: () => void
   onAttach: (item: Installment, k: number, file: File) => Promise<void>
   onOpen: (id: string) => Promise<void>
   onRemove: (id: string) => Promise<void>
   onClose: () => void
 }
 
-export function InstallmentDetail({ item, receipts, onAttach, onOpen, onRemove, onClose }: Props) {
+export function InstallmentDetail({ item, receipts, missing, onBackfill, onAttach, onOpen, onRemove, onClose }: Props) {
   const st = installmentStatus(item)
   const input = useRef<HTMLInputElement>(null)
   const target = useRef<number>(0)
@@ -38,6 +41,14 @@ export function InstallmentDetail({ item, receipts, onAttach, onOpen, onRemove, 
       <p className="muted small detail-sub">
         {st.paid} de {item.count} pagas · anexe o comprovante das parcelas pagas.
       </p>
+      {missing > 0 && (
+        <div className="backfill" role="note">
+          <span>
+            {missing} {missing > 1 ? 'parcelas pagas não estão' : 'parcela paga não está'} nas despesas.
+          </span>
+          <button className="btn primary" onClick={onBackfill}>Lançar como despesa</button>
+        </div>
+      )}
       <input
         ref={input}
         type="file"

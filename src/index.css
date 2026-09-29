@@ -398,3 +398,4 @@ main > .tabs { align-self: flex-start; }
 .receipt-img { max-width: 100%; max-height: 62vh; display: block; margin: 0 auto 14px; border-radius: 12px; background: #fff; }
 .receipt-actions { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
 .receipt-actions a { text-decoration: none; }
+.backfill { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: var(--accent-soft); border: 1px solid rgba(224, 96, 15, 0.4); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; }

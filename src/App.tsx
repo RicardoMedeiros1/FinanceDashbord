@@ -5,12 +5,12 @@ import { Modal } from './components/Modal'
 import { Sidebar } from './components/Sidebar'
 import { TransactionForm } from './components/TransactionForm'
 import { seedBudgets, seedGoals, seedSubscriptions, seedTransactions } from './data'
-import { applyRecurring, skipToToday, uid } from './lib'
+import { applyInstallments, applyRecurring, installmentStatus, skipToToday, uid } from './lib'
 import { Assistant } from './pages/Assistant'
 import { Budgets } from './pages/Budgets'
 import { Overview } from './pages/Overview'
-import { Subscriptions } from './pages/Subscriptions'
-import { Transactions } from './pages/Transactions'
+import { Subscriptions, type SubsTab } from './pages/Subscriptions'
+import { Transactions, type TxView } from './pages/Transactions'
 import type { Budget, CategoryId, Cycle, Goal, Installment, Page, Recurring, Subscription, Transaction } from './types'
 import { useStored } from './useStored'
 
@@ -22,13 +22,31 @@ const TITLES: Record<Page, { title: string; subtitle: string }> = {
   assistant: { title: 'Assistente', subtitle: 'Tire dúvidas sobre o seu dinheiro' },
 }
 
+const PAGES = Object.keys(TITLES) as Page[]
+
+/** A aba atual vive na URL (#/pagina/subaba): dá para recarregar, usar "voltar" e compartilhar o link. */
+function parseHash(): { page: Page; sub: string } {
+  const [p, sub = ''] = window.location.hash.replace(/^#\/?/, '').split('/')
+  return { page: PAGES.includes(p as Page) ? (p as Page) : 'overview', sub }
+}
+
 const greeting = () => {
   const h = new Date().getHours()
   return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite'
 }
 
 export default function App() {
-  const [page, setPage] = useState<Page>('overview')
+  const [route, setRoute] = useState(parseHash)
+  const { page, sub } = route
+  useEffect(() => {
+    const onHash = () => setRoute(parseHash())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+  const go = (p: Page, s = '') => {
+    window.location.hash = `/${p}${s ? `/${s}` : ''}`
+  }
+  const setPage = (p: Page) => go(p)
   const [txs, setTxs] = useStored<Transaction[]>('fd:txs', seedTransactions)
   const [subs, setSubs] = useStored<Subscription[]>('fd:subs', seedSubscriptions)
   const [budgets, setBudgets] = useStored<Budget[]>('fd:budgets', seedBudgets)
@@ -38,16 +56,20 @@ export default function App() {
   const [form, setForm] = useState<{ tx?: Transaction; repeat?: boolean } | null>(null)
   const [tick, setTick] = useState(0)
 
-  // Lança as recorrências vencidas ao abrir, ao mudar as regras e ao voltar para o app.
+  // Lança como despesa o que venceu: recorrências e parcelas. Roda ao abrir, ao mudar os dados e ao voltar para o app.
   useEffect(() => {
     const r = applyRecurring(rules)
-    if (!r) return
-    setRules(r.rules)
-    setTxs((l) => {
-      const ids = new Set(l.map((t) => t.id))
-      return [...r.txs.filter((t) => !ids.has(t.id)), ...l]
-    })
-  }, [rules, tick, setRules, setTxs])
+    const q = applyInstallments(installments)
+    if (r) setRules(r.rules)
+    if (q) setInstallments(q.items)
+    const added = [...(r?.txs ?? []), ...(q?.txs ?? [])]
+    if (added.length) {
+      setTxs((l) => {
+        const ids = new Set(l.map((t) => t.id))
+        return [...added.filter((t) => !ids.has(t.id)), ...l]
+      })
+    }
+  }, [rules, installments, tick, setRules, setInstallments, setTxs])
 
   useEffect(() => {
     const onVisible = () => document.visibilityState === 'visible' && setTick((n) => n + 1)
@@ -102,6 +124,8 @@ export default function App() {
             txs={txs}
             rules={rules}
             onEdit={(tx) => setForm({ tx })}
+            view={(sub === 'recurring' ? 'recurring' : 'list') satisfies TxView}
+            onView={(v) => go('transactions', v === 'recurring' ? 'recurring' : '')}
             onDelete={(id) => setTxs((l) => l.filter((t) => t.id !== id))}
             onNewRecurring={() => setForm({ repeat: true })}
             onToggleRule={(id) => setRules((l) => l.map((r) => (r.id === id ? (r.active ? { ...r, active: false } : { ...skipToToday(r), active: true }) : r)))}
@@ -110,8 +134,16 @@ export default function App() {
         )}
         {page === 'subscriptions' && (
           <Subscriptions
+            tab={(sub === 'installments' ? 'installments' : 'subs') satisfies SubsTab}
+            onTab={(t) => go('subscriptions', t === 'installments' ? 'installments' : '')}
             installments={installments}
-            onSaveInstallment={(i, id) => setInstallments((l) => (id ? l.map((x) => (x.id === id ? { ...i, id } : x)) : [...l, { ...i, id: uid() }]))}
+            onSaveInstallment={(i, includePast, id) =>
+              setInstallments((l) =>
+                id
+                  ? l.map((x) => (x.id === id ? { ...x, ...i } : x))
+                  : [...l, { ...i, id: uid(), generated: includePast ? 0 : installmentStatus({ ...i, id: '' }).paid }],
+              )
+            }
             onDeleteInstallment={(id) => setInstallments((l) => l.filter((x) => x.id !== id))}
             subs={subs}
             onAdd={(s) => setSubs((l) => [...l, { ...s, id: uid(), active: true }])}

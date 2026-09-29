@@ -3,13 +3,18 @@ import { useState } from 'react'
 import { Modal } from '../components/Modal'
 import { InstallmentForm } from '../components/InstallmentForm'
 import { SubscriptionForm } from '../components/SubscriptionForm'
+import { Tabs } from '../components/Tabs'
 import { Installments } from './Installments'
 import { brl, daysUntil, formatDate, monthlyCost, nextCharge, toISO } from '../lib'
 import type { Installment, Subscription } from '../types'
 
+export type SubsTab = 'subs' | 'installments'
+
 interface Props {
+  tab: SubsTab
+  onTab: (t: SubsTab) => void
   installments: Installment[]
-  onSaveInstallment: (i: Omit<Installment, 'id'>, id?: string) => void
+  onSaveInstallment: (i: Omit<Installment, 'id' | 'generated'>, includePast: boolean, id?: string) => void
   onDeleteInstallment: (id: string) => void
   subs: Subscription[]
   onAdd: (s: Omit<Subscription, 'id' | 'active'>) => void
@@ -17,18 +22,22 @@ interface Props {
   onDelete: (id: string) => void
 }
 
-export function Subscriptions({ subs, onAdd, onToggle, onDelete, installments, onSaveInstallment, onDeleteInstallment }: Props) {
-  const [tab, setTab] = useState<'subs' | 'installments'>('subs')
+export function Subscriptions({ tab, onTab, subs, onAdd, onToggle, onDelete, installments, onSaveInstallment, onDeleteInstallment }: Props) {
   const [open, setOpen] = useState(false)
   const [instForm, setInstForm] = useState<{ item?: Installment } | null>(null)
   const active = subs.filter((s) => s.active)
   const monthly = active.reduce((s, x) => s + monthlyCost(x), 0)
 
   const tabs = (
-    <div className="segmented">
-      <button className={tab === 'subs' ? 'on' : ''} onClick={() => setTab('subs')}>Assinaturas</button>
-      <button className={tab === 'installments' ? 'on' : ''} onClick={() => setTab('installments')}>Parcelas{installments.length ? ` (${installments.length})` : ''}</button>
-    </div>
+    <Tabs
+      label="Assinaturas e parcelas"
+      active={tab}
+      onChange={onTab}
+      tabs={[
+        { id: 'subs', label: 'Assinaturas', count: subs.filter((x) => x.active).length },
+        { id: 'installments', label: 'Parcelas', count: installments.length },
+      ]}
+    />
   )
 
   if (tab === 'installments') {
@@ -45,8 +54,8 @@ export function Subscriptions({ subs, onAdd, onToggle, onDelete, installments, o
           <Modal title={instForm.item ? 'Editar parcela' : 'Nova parcela'} onClose={() => setInstForm(null)}>
             <InstallmentForm
               initial={instForm.item}
-              onSave={(i) => {
-                onSaveInstallment(i, instForm.item?.id)
+              onSave={(i, includePast) => {
+                onSaveInstallment(i, includePast, instForm.item?.id)
                 setInstForm(null)
               }}
             />

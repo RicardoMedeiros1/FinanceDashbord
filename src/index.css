@@ -177,7 +177,7 @@ tr:last-child td { border-bottom: 0; }
   .sidebar { position: static; height: auto; display: flex; align-items: center; justify-content: space-between; padding: 12px; border-right: 0; border-bottom: 1px solid var(--border); overflow-x: auto; gap: 12px; }
   .brand { padding: 0; }
   nav { flex-direction: row; }
-  .nav-item span { display: none; }
+  .nav-item span.nav-label { display: block; }
   main { padding: 20px 16px 40px; }
   .grid.stats, .grid.stats.three { grid-template-columns: 1fr 1fr; }
   .donut-wrap { grid-template-columns: 1fr; }
@@ -335,3 +335,35 @@ main { max-width: 1480px; margin-inline: auto; }
 .preview { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; line-height: 1.5; margin: 0; }
 .card.empty-rules { padding: 28px; }
 main > .segmented { align-self: flex-start; }
+
+/* abas clicáveis */
+.tabs { display: flex; gap: 4px; padding: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; width: fit-content; max-width: 100%; overflow-x: auto; }
+main > .tabs { align-self: flex-start; }
+.tab { display: inline-flex; align-items: center; gap: 7px; padding: 9px 16px; border: 0; border-radius: 10px; background: none; color: var(--muted); font-weight: 500; white-space: nowrap; transition: background 0.12s, color 0.12s; }
+.tab:hover { color: var(--text); background: var(--surface-2); }
+.tab.on { background: #fff; color: #0b0b0b; font-weight: 600; }
+.tab-count { font-size: 11px; line-height: 1; padding: 3px 7px; border-radius: 99px; background: var(--surface-2); color: var(--muted); }
+.tab.on .tab-count { background: #e6e6e6; color: #333; }
+
+/* menu lateral com nomes visíveis em telas médias/grandes */
+@media (min-width: 1100px) {
+  .app { grid-template-columns: 220px 1fr; }
+  .sidebar { align-items: stretch; padding: 22px 14px; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 0 8px 26px; font-weight: 700; font-size: 20px; }
+  nav { align-items: stretch; }
+  .nav-item { width: 100%; justify-content: flex-start; gap: 12px; padding: 0 14px; }
+  .nav-label { display: inline; font-size: 14px; font-weight: 500; }
+}
+.brand-name { display: none; }
+@media (min-width: 1100px) { .brand-name { display: inline; } }
+
+/* celular: barra de baixo com ícone + nome */
+@media (max-width: 760px) {
+  .sidebar { height: calc(66px + env(safe-area-inset-bottom)); }
+  nav { width: 100%; justify-content: space-around; gap: 0; }
+  .nav-item { width: auto; min-width: 58px; height: 52px; flex-direction: column; gap: 3px; padding: 0 6px; border-radius: 12px; }
+  .nav-label { display: block; font-size: 10px; font-weight: 500; }
+}
+@media (max-width: 760px) {
+  .nav-item .nav-label { display: block; }
+}

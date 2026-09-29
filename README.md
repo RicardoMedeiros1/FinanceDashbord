@@ -13,7 +13,7 @@ React + TypeScript + Vite, gráficos com Recharts. Os dados ficam salvos no `loc
 - **Transações**: busca, filtro por mês/tipo, adicionar, **editar** e excluir.
 - **Recorrentes**: cadastre salário, aluguel e contas fixas (semanal, mensal ou anual) uma vez; o app lança sozinho quando a data chega, sem duplicar e sem recriar o que você apagou. Dá para pausar, reativar e excluir a regra (os lançamentos já gerados ficam).
 - **Assinaturas**: custo mensal/anual, próxima renovação, pausar/reativar, adicionar e excluir.
-- **Parcelas e dívidas** (aba dentro de Assinaturas): informe o que comprou, com quem, a data da compra, o valor e o número de parcelas. O app calcula quantas já venceram, quanto falta e quando termina. Aparecem em "Próximos pagamentos", nos insights e no assistente.
+- **Parcelas e dívidas** (aba dentro de Assinaturas): informe o que comprou, com quem, a data da compra, o valor e o número de parcelas. O app calcula quantas já venceram, quanto falta e quando termina, e **lança cada parcela como despesa** (categoria à sua escolha) no dia do vencimento, até a última. Se a compra já tem parcelas vencidas, você escolhe se elas entram no histórico de despesas. Aparecem em "Próximos pagamentos", nos insights e no assistente.
 - **Orçamentos**: limite por categoria com barra de progresso.
 
 ## Rodando
@@ -37,6 +37,10 @@ O projeto é um PWA: depois de publicado, abra o link no celular e use **Adicion
 3. O app fica em `https://<seu-usuario>.github.io/FinanceDashbord/`.
 
 Se usar outro nome de repositório ou domínio, ajuste `BASE_PATH` (padrão `/FinanceDashbord/`, ver `vite.config.ts`).
+
+### Navegação
+
+O menu lateral (ou a barra de baixo no celular) e as abas de cada página são clicáveis e só mostram o conteúdo da aba escolhida. A aba fica na URL (`#/subscriptions/installments`), então recarregar, voltar e favoritar funcionam.
 
 ### Seus dados
 

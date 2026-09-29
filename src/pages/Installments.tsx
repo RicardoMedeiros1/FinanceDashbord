@@ -32,7 +32,7 @@ export function Installments({ items, onNew, onEdit, onDelete }: Props) {
 
       {rows.length === 0 ? (
         <div className="card empty-rules muted">
-          Comprou algo parcelado no cartão de alguém? Cadastre aqui: informe a data da compra, o valor e o número de parcelas, e o app calcula quanto falta e quando termina.
+          Comprou algo parcelado no cartão de alguém? Cadastre aqui: informe a data da compra, o valor e o número de parcelas. O app calcula quanto falta e quando termina, e lança cada parcela como despesa no dia do vencimento.
         </div>
       ) : (
         <div className="grid subs">
@@ -45,7 +45,7 @@ export function Installments({ items, onNew, onEdit, onDelete }: Props) {
                   <span className="muted small">{i.lender ? `Com ${i.lender}` : `Comprado em ${formatDate(i.purchaseDate)}`}</span>
                 </div>
                 <button className="icon-btn" onClick={() => onEdit(i)} aria-label={`Editar ${i.name}`}><Pencil size={15} /></button>
-                <button className="icon-btn" onClick={() => onDelete(i.id)} aria-label={`Excluir ${i.name}`}><Trash2 size={15} /></button>
+                <button className="icon-btn" onClick={() => { if (confirm(`Excluir “${i.name}”? As despesas já lançadas continuam nas Transações.`)) onDelete(i.id) }} aria-label={`Excluir ${i.name}`}><Trash2 size={15} /></button>
               </div>
               <div className="sub-price">{brl(i.amount)}<span className="muted small"> /mês · {i.count}x</span></div>
               <div>

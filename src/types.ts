@@ -70,4 +70,6 @@ export interface Installment {
   purchaseDate: string // yyyy-mm-dd
   firstDate: string // vencimento da 1ª parcela, yyyy-mm-dd
   color: string
+  category?: CategoryId // categoria das despesas geradas (padrão: compras)
+  generated?: number // quantas parcelas já viraram despesa
 }

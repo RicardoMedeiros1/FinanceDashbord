@@ -1,12 +1,14 @@
 import { useState } from 'react'
+import { CATEGORIES, EXPENSE_CATEGORIES } from '../categories'
 import { brl, installmentStatus, monthLong, occurrence, toISO } from '../lib'
-import type { Installment } from '../types'
+import type { CategoryId, Installment } from '../types'
 
 const COLORS = ['#e0600f', '#3b6ef5', '#8b3ff5', '#e84a45', '#3ecf6e', '#f472b6', '#22d3ee', '#94a3b8']
 
 interface Props {
   initial?: Installment
-  onSave: (i: Omit<Installment, 'id'>) => void
+  /** includePast: lançar como despesa as parcelas que já venceram (só ao criar). */
+  onSave: (i: Omit<Installment, 'id' | 'generated'>, includePast: boolean) => void
 }
 
 export function InstallmentForm({ initial, onSave }: Props) {
@@ -17,7 +19,9 @@ export function InstallmentForm({ initial, onSave }: Props) {
   const [purchaseDate, setPurchaseDate] = useState(initial?.purchaseDate ?? toISO(new Date()))
   const [firstDate, setFirstDate] = useState(initial?.firstDate ?? occurrence(toISO(new Date()), 'monthly', 1))
   const [firstTouched, setFirstTouched] = useState(!!initial)
+  const [category, setCategory] = useState<CategoryId>(initial?.category ?? 'compras')
   const [color, setColor] = useState(initial?.color ?? COLORS[0])
+  const [includePast, setIncludePast] = useState(true)
 
   const value = Number(amount.replace(',', '.'))
   const n = Math.floor(Number(count))
@@ -40,7 +44,7 @@ export function InstallmentForm({ initial, onSave }: Props) {
       className="form"
       onSubmit={(e) => {
         e.preventDefault()
-        if (valid) onSave({ name: name.trim(), lender: lender.trim(), amount: value, count: n, purchaseDate, firstDate, color })
+        if (valid) onSave({ name: name.trim(), lender: lender.trim(), amount: value, count: n, purchaseDate, firstDate, color, category }, includePast)
       }}
     >
       <label>
@@ -71,6 +75,14 @@ export function InstallmentForm({ initial, onSave }: Props) {
           <input type="date" value={firstDate} onChange={(e) => { setFirstDate(e.target.value); setFirstTouched(true) }} />
         </label>
       </div>
+      <label>
+        Categoria da despesa
+        <select value={category} onChange={(e) => setCategory(e.target.value as CategoryId)}>
+          {EXPENSE_CATEGORIES.map((c) => (
+            <option key={c} value={c}>{CATEGORIES[c].label}</option>
+          ))}
+        </select>
+      </label>
       <div className="swatches">
         {COLORS.map((c) => (
           <button type="button" key={c} className={`swatch ${c === color ? 'on' : ''}`} style={{ background: c }} onClick={() => setColor(c)} aria-label={`Cor ${c}`} />
@@ -80,8 +92,16 @@ export function InstallmentForm({ initial, onSave }: Props) {
         <p className="preview small" role="note">
           {n}x de {brl(value)} = <strong>{brl(preview.total)}</strong>. Última parcela em <strong>{monthLong(preview.end.slice(0, 7)).toLowerCase()}</strong>
           {preview.paid > 0 ? ` · ${preview.paid} já ${preview.paid > 1 ? 'venceram' : 'venceu'}` : ''}.
+          {' '}Cada parcela vira uma despesa no dia do vencimento.
         </p>
       )}
+      {!initial && preview && preview.paid > 0 && (
+        <label className="check">
+          <input type="checkbox" checked={includePast} onChange={(e) => setIncludePast(e.target.checked)} />
+          Lançar também como despesa as {preview.paid} {preview.paid > 1 ? 'parcelas que já venceram' : 'parcela que já venceu'}
+        </label>
+      )}
+      {initial && <p className="muted small">Alterações valem para as próximas parcelas; despesas já lançadas não mudam.</p>}
       <button className="btn primary" disabled={!valid}>{initial ? 'Salvar alterações' : 'Adicionar'}</button>
     </form>
   )

@@ -108,11 +108,11 @@ export function skipToToday(r: Recurring, today = toISO(new Date())): Recurring 
 }
 
 export interface InstallmentStatus {
-  paid: number // parcelas com vencimento anterior a hoje
+  paid: number // parcelas com vencimento até hoje (no dia do vencimento vira despesa)
   remaining: number
   remainingAmount: number
   total: number
-  next: string | null // próximo vencimento (hoje conta como pendente)
+  next: string | null // próximo vencimento (sempre depois de hoje)
   end: string // vencimento da última parcela
   done: boolean
 }
@@ -120,7 +120,7 @@ export interface InstallmentStatus {
 /** Tudo é derivado das datas: as parcelas vão "sendo pagas" conforme os vencimentos passam. */
 export function installmentStatus(i: Installment, today = toISO(new Date())): InstallmentStatus {
   let paid = 0
-  while (paid < i.count && occurrence(i.firstDate, 'monthly', paid) < today) paid++
+  while (paid < i.count && occurrence(i.firstDate, 'monthly', paid) <= today) paid++
   const remaining = i.count - paid
   return {
     paid,
@@ -131,4 +131,40 @@ export function installmentStatus(i: Installment, today = toISO(new Date())): In
     end: occurrence(i.firstDate, 'monthly', i.count - 1),
     done: remaining === 0,
   }
+}
+
+/**
+ * Transforma em despesa cada parcela que venceu (até hoje), até a última.
+ * Os ids são determinísticos (`parcelamento-pN`), então rodar de novo não duplica,
+ * e o contador `generated` evita recriar uma despesa que você apagou.
+ * Parcelamentos antigos, sem contador, começam de agora (não mexem no histórico).
+ */
+export function applyInstallments(items: Installment[], today = toISO(new Date())) {
+  const txs: Transaction[] = []
+  let changed = false
+  const next = items.map((i) => {
+    if (i.generated === undefined) {
+      changed = true
+      return { ...i, generated: installmentStatus(i, today).paid }
+    }
+    let n = i.generated
+    while (n < i.count) {
+      const date = occurrence(i.firstDate, 'monthly', n)
+      if (date > today) break
+      txs.push({
+        id: `${i.id}-p${n}`,
+        description: `${i.name} (${n + 1}/${i.count})`,
+        amount: i.amount,
+        type: 'expense',
+        category: i.category ?? 'compras',
+        date,
+        ruleId: i.id,
+      })
+      n++
+    }
+    if (n === i.generated) return i
+    changed = true
+    return { ...i, generated: n }
+  })
+  return changed ? { items: next, txs } : null
 }

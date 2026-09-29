@@ -1,12 +1,17 @@
 import { Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { CATEGORIES } from '../categories'
+import { Tabs } from '../components/Tabs'
 import { brl, CYCLE_LABEL, formatDate, monthKey, monthLong, nextOccurrence, sumBy } from '../lib'
 import type { Recurring, Transaction } from '../types'
 
 type Filter = 'all' | 'income' | 'expense'
 
+export type TxView = 'list' | 'recurring'
+
 interface Props {
+  view: TxView
+  onView: (v: TxView) => void
   txs: Transaction[]
   rules: Recurring[]
   onEdit: (t: Transaction) => void
@@ -18,8 +23,7 @@ interface Props {
 
 const tagStyle = (color: string) => ({ '--c': color }) as React.CSSProperties
 
-export function Transactions({ txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
-  const [view, setView] = useState<'list' | 'recurring'>('list')
+export function Transactions({ view, onView, txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [month, setMonth] = useState(monthKey(new Date()))
@@ -43,12 +47,15 @@ export function Transactions({ txs, rules, onEdit, onDelete, onNewRecurring, onT
   return (
     <div className="card">
       <div className="view-tabs">
-        <div className="segmented">
-          <button className={view === 'list' ? 'on' : ''} onClick={() => setView('list')}>Lançamentos</button>
-          <button className={view === 'recurring' ? 'on' : ''} onClick={() => setView('recurring')}>
-            <Repeat size={13} /> Recorrentes{rules.length ? ` (${rules.length})` : ''}
-          </button>
-        </div>
+        <Tabs
+          label="Transações"
+          active={view}
+          onChange={onView}
+          tabs={[
+            { id: 'list', label: 'Lançamentos' },
+            { id: 'recurring', label: 'Recorrentes', icon: <Repeat size={13} />, count: rules.length },
+          ]}
+        />
         {view === 'recurring' && (
           <button className="btn primary" onClick={onNewRecurring}><Plus size={16} /> Nova recorrente</button>
         )}
@@ -91,7 +98,7 @@ export function Transactions({ txs, rules, onEdit, onDelete, onNewRecurring, onT
                   <tr key={t.id}>
                     <td>
                       {t.description}
-                      {t.ruleId && <Repeat size={12} className="rec-icon" aria-label="Recorrente" />}
+                      {t.ruleId && <Repeat size={12} className="rec-icon" aria-label="Lançado automaticamente" />}
                     </td>
                     <td><span className="tag" style={tagStyle(CATEGORIES[t.category].color)}>{CATEGORIES[t.category].label}</span></td>
                     <td className="muted">{formatDate(t.date)}</td>

@@ -5,7 +5,7 @@ const ITEMS: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'overview', label: 'Visão geral', icon: LayoutDashboard },
   { id: 'transactions', label: 'Transações', icon: Receipt },
   { id: 'subscriptions', label: 'Assinaturas', icon: CreditCard },
-  { id: 'cards', label: 'Cartões', icon: Wallet },
+  { id: 'cards', label: 'Cartões e contas', icon: Wallet },
   { id: 'budgets', label: 'Orçamentos', icon: PiggyBank },
   { id: 'assistant', label: 'Assistente', icon: Bot },
 ]

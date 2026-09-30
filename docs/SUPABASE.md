@@ -61,6 +61,20 @@ Para testar no computador, copie `.env.example` para `.env.local`, preencha as d
 - Depois disso, o selo no topo mostra o estado: **Sincronizado**, **Sincronizando…** ou **Sem conexão** (as alterações ficam
   guardadas e são enviadas quando a internet voltar). Toque no selo para sincronizar na hora.
 
+## 7. Recuperação de senha ("Esqueci minha senha")
+
+O app envia o e-mail de redefinição pelo Supabase. Para o link voltar para o seu app (e não para `localhost`), configure:
+
+1. **Authentication → URL Configuration**:
+   - **Site URL**: `https://SEU-USUARIO.github.io/FinanceDashbord/`
+   - **Redirect URLs**: adicione o mesmo endereço.
+2. O e-mail padrão do Supabase tem limites (poucos envios por hora e, em projetos novos, pode enviar só para os e-mails da equipe do projeto). Confira a regra atual no site do Supabase. Para outras pessoas usarem, configure um SMTP próprio em **Authentication → SMTP Settings** (Resend, Brevo, etc.).
+3. Teste: na tela de login, **Esqueci minha senha** → abra o link do e-mail → o app abre pedindo a **nova senha**.
+
+Se o link mostrar "expirou ou já foi usado", peça outro: cada link vale uma vez e por pouco tempo.
+
+Dentro do app, **Dados → Trocar senha** também funciona (mínimo de 8 caracteres).
+
 ## Como conferir se está tudo certo
 
 1. Entrar com senha errada mostra "E-mail ou senha incorretos".

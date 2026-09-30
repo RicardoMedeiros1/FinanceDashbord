@@ -1,6 +1,6 @@
 import type { Remote, Row } from './types'
 
-export const COLS = ['txs', 'subs', 'budgets', 'goals', 'installments', 'rules', 'receipts', 'cards', 'profile'] as const
+export const COLS = ['txs', 'subs', 'budgets', 'goals', 'installments', 'rules', 'receipts', 'cards', 'profile', 'accounts', 'transfers'] as const
 export type Col = (typeof COLS)[number]
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Item = any

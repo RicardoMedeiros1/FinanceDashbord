@@ -1,6 +1,6 @@
 import { Download, KeyRound, LogOut, RotateCcw, Trash2, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
-import type { Budget, Card, Goal, Installment, Recurring, Subscription, Transaction } from '../types'
+import type { Account, Budget, Card, Goal, Installment, Recurring, Subscription, Transaction, Transfer } from '../types'
 import { PasswordForm } from '../cloud/PasswordForm'
 import { Modal } from './Modal'
 
@@ -12,6 +12,8 @@ export interface AppData {
   recurring: Recurring[]
   installments: Installment[]
   cards: Card[]
+  accounts: Account[]
+  transfers: Transfer[]
 }
 
 export interface CloudInfo {
@@ -36,7 +38,7 @@ function parse(text: string): AppData {
   const raw = JSON.parse(text)
   const ok = (k: string) => Array.isArray(raw?.[k])
   if (!ok('txs') || !ok('subs') || !ok('budgets')) throw new Error('formato')
-  return { txs: raw.txs, subs: raw.subs, budgets: raw.budgets, goals: Array.isArray(raw.goals) ? raw.goals : [], recurring: Array.isArray(raw.recurring) ? raw.recurring : [], installments: Array.isArray(raw.installments) ? raw.installments : [], cards: Array.isArray(raw.cards) ? raw.cards : [] }
+  return { txs: raw.txs, subs: raw.subs, budgets: raw.budgets, goals: Array.isArray(raw.goals) ? raw.goals : [], recurring: Array.isArray(raw.recurring) ? raw.recurring : [], installments: Array.isArray(raw.installments) ? raw.installments : [], cards: Array.isArray(raw.cards) ? raw.cards : [], accounts: Array.isArray(raw.accounts) ? raw.accounts : [], transfers: Array.isArray(raw.transfers) ? raw.transfers : [] }
 }
 
 export function DataModal({ profileName, onProfileName, cloud, data, onImport, onReset, onClear, onClose }: Props) {

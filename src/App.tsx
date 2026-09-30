@@ -17,15 +17,15 @@ import { Budgets } from './pages/Budgets'
 import { Overview } from './pages/Overview'
 import { Subscriptions, type SubsTab } from './pages/Subscriptions'
 import { Transactions, type TxView } from './pages/Transactions'
-import { Cards } from './pages/Cards'
-import type { Budget, Card, CategoryId, Cycle, Goal, Installment, Page, Profile, Recurring, Subscription, Transaction } from './types'
+import { Cards, type CardsTab } from './pages/Cards'
+import type { Account, Budget, Card, CategoryId, Cycle, Goal, Installment, Page, Profile, Recurring, Subscription, Transaction, Transfer } from './types'
 import { useStored } from './useStored'
 
 const TITLES: Record<Page, { title: string; subtitle: string }> = {
   overview: { title: 'Visão geral', subtitle: 'Como está o seu dinheiro este mês' },
   transactions: { title: 'Transações', subtitle: 'Todas as receitas e despesas' },
   subscriptions: { title: 'Assinaturas e parcelas', subtitle: 'O que renova no cartão e o que você ainda está pagando' },
-  cards: { title: 'Cartões', subtitle: 'Fechamento, vencimento e fatura de cada cartão' },
+  cards: { title: 'Cartões e contas', subtitle: 'Saldo das contas, fechamento e fatura de cada cartão' },
   budgets: { title: 'Orçamentos', subtitle: 'Limites de gasto por categoria' },
   assistant: { title: 'Assistente', subtitle: 'Tire dúvidas sobre o seu dinheiro' },
 }
@@ -73,6 +73,8 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
   const [rules, setRules] = useStored<Recurring[]>('fd:rules', none)
   const [receipts, setReceipts] = useStored<ReceiptMeta[]>('fd:receipts', none)
   const [cards, setCards] = useStored<Card[]>('fd:cards', none)
+  const [accounts, setAccounts] = useStored<Account[]>('fd:accounts', none)
+  const [transfers, setTransfers] = useStored<Transfer[]>('fd:transfers', none)
   const [profile, setProfile] = useStored<Profile[]>('fd:profile', none)
   const profileName = profile.find((p) => p.id === 'me')?.name ?? ''
   const [form, setForm] = useState<{ tx?: Transaction; repeat?: boolean } | null>(null)
@@ -80,7 +82,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
   const [tick, setTick] = useState(0)
 
   // ---------- sincronização com a nuvem ----------
-  const data: Collections = { txs, subs, budgets, goals, installments, rules, receipts, cards, profile }
+  const data: Collections = { txs, subs, budgets, goals, installments, rules, receipts, cards, profile, accounts, transfers }
   const dataRef = useRef<Collections>(data)
   // espelho síncrono do estado (o motor de sync lê daqui); `apply` também o atualiza na hora
   useLayoutEffect(() => {
@@ -97,6 +99,8 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     receipts: setReceipts as never,
     cards: setCards as never,
     profile: setProfile as never,
+    accounts: setAccounts as never,
+    transfers: setTransfers as never,
   }
   const settersRef = useRef(setters) // os setters do React são estáveis
 
@@ -146,7 +150,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
   // toda mudança local agenda um envio
   useEffect(() => {
     engineRef.current?.schedule()
-  }, [txs, subs, budgets, goals, installments, rules, receipts, cards, profile])
+  }, [txs, subs, budgets, goals, installments, rules, receipts, cards, profile, accounts, transfers])
 
   // ---------- comprovantes ----------
   const store = useMemo(() => (cloud && remote ? cloudReceiptStore(remote, cloud.userId) : localReceiptStore()), [cloud, remote])
@@ -222,7 +226,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
       const id = form.tx.id
       setTxs((l) => l.map((x) => (x.id === id ? { ...x, ...t } : x)))
     } else if (repeat) {
-      setRules((l) => [...l, { id: uid(), description: t.description, amount: t.amount, type: t.type, category: t.category, cycle: repeat, anchor: t.date, generated: 0, active: true, cardId: t.cardId }])
+      setRules((l) => [...l, { id: uid(), description: t.description, amount: t.amount, type: t.type, category: t.category, cycle: repeat, anchor: t.date, generated: 0, active: true, cardId: t.cardId, accountId: t.accountId }])
     } else {
       setTxs((l) => [{ ...t, id: uid() }, ...l])
     }
@@ -239,6 +243,8 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     for (const r of receipts) void storeFor(r).remove(r).catch(() => undefined)
     setReceipts([])
     setCards([])
+    setAccounts([])
+    setTransfers([])
     setInstallments([])
     setRules([])
     setTxs([])
@@ -258,8 +264,29 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     setRules(unlink)
     setCards((l) => l.filter((c) => c.id !== id))
   }
-  const toggleInvoicePaid = (cardId: string, key: string) =>
-    setCards((l) => l.map((c) => (c.id === cardId ? { ...c, paid: c.paid?.includes(key) ? c.paid.filter((k) => k !== key) : [...(c.paid ?? []), key] } : c)))
+  const payInvoice = (cardId: string, key: string, opts?: { accountId: string; date: string; amount: number }) => {
+    const card = cards.find((c) => c.id === cardId)
+    setCards((l) => l.map((c) => (c.id === cardId && !c.paid?.includes(key) ? { ...c, paid: [...(c.paid ?? []), key] } : c)))
+    if (opts && card) {
+      // sai da conta, mas não vira despesa nova (as compras já contaram no dia em que foram feitas)
+      setTransfers((l) => [...l, { id: uid(), date: opts.date, from: opts.accountId, amount: opts.amount, note: `Fatura ${card.name}`, kind: 'invoice', cardId, invoiceKey: key }])
+    }
+  }
+  const unpayInvoice = (cardId: string, key: string) => {
+    setCards((l) => l.map((c) => (c.id === cardId ? { ...c, paid: (c.paid ?? []).filter((k) => k !== key) } : c)))
+    setTransfers((l) => l.filter((t) => !(t.kind === 'invoice' && t.cardId === cardId && t.invoiceKey === key)))
+  }
+  const saveAccount = (a: Omit<Account, 'id'>, id?: string) =>
+    setAccounts((l) => (id ? l.map((x) => (x.id === id ? { ...x, ...a } : x)) : [...l, { ...a, id: uid() }]))
+  const deleteAccount = (id: string) => {
+    const unlink = <T extends { accountId?: string }>(l: T[]) => l.map((x) => (x.accountId === id ? { ...x, accountId: undefined } : x))
+    setTxs(unlink)
+    setSubs(unlink)
+    setInstallments(unlink)
+    setRules(unlink)
+    setTransfers((l) => l.filter((t) => t.from !== id && t.to !== id))
+    setAccounts((l) => l.filter((a) => a.id !== id))
+  }
 
   const signOut = async () => {
     if (!cloud) return
@@ -294,6 +321,9 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
           <Overview
             installments={installments}
             cards={cards}
+            accounts={accounts}
+            transfers={transfers}
+            rules={rules}
             txs={txs}
             subs={subs}
             budgets={budgets}
@@ -322,6 +352,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
         {page === 'subscriptions' && (
           <Subscriptions
             cards={cards}
+            accounts={accounts}
             tab={(sub === 'installments' ? 'installments' : 'subs') satisfies SubsTab}
             onTab={(t) => go('subscriptions', t === 'installments' ? 'installments' : '')}
             installments={installments}
@@ -349,14 +380,23 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
         )}
         {page === 'cards' && (
           <Cards
+            tab={(sub === 'contas' ? 'accounts' : 'cards') satisfies CardsTab}
+            onTab={(t) => go('cards', t === 'accounts' ? 'contas' : '')}
+            accounts={accounts}
+            transfers={transfers}
+            onPayInvoice={payInvoice}
+            onUnpayInvoice={unpayInvoice}
+            onSaveAccount={saveAccount}
+            onDeleteAccount={deleteAccount}
+            onTransfer={(t) => setTransfers((l) => [...l, { ...t, id: uid(), kind: 'transfer' }])}
+            onDeleteTransfer={(id) => setTransfers((l) => l.filter((t) => t.id !== id))}
             cards={cards}
             txs={txs}
-            sub={sub}
+            sub={sub === 'contas' ? '' : sub}
             onOpen={(id) => go('cards', id)}
             onBack={() => go('cards')}
             onSave={saveCard}
             onDelete={deleteCard}
-            onTogglePaid={toggleInvoicePaid}
           />
         )}
         {page === 'budgets' && (
@@ -369,7 +409,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             }
           />
         )}
-        {page === 'assistant' && <Assistant txs={txs} subs={subs} budgets={budgets} installments={installments} cards={cards} />}
+        {page === 'assistant' && <Assistant txs={txs} subs={subs} budgets={budgets} installments={installments} cards={cards} accounts={accounts} transfers={transfers} rules={rules} />}
       </main>
 
       {gate === 'ask' && (
@@ -398,7 +438,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
           profileName={profileName}
           onProfileName={(name) => setProfile(name ? [{ id: 'me', name }] : [])}
           cloud={cloud ? { email: cloud.email, onSignOut: () => void signOut(), onChangePassword: (pw) => cloud.auth.updatePassword(pw) } : undefined}
-          data={{ txs, subs, budgets, goals, recurring: rules, installments, cards }}
+          data={{ txs, subs, budgets, goals, recurring: rules, installments, cards, accounts, transfers }}
           onClose={() => setDataOpen(false)}
           onImport={(d) => {
             setTxs(d.txs)
@@ -408,9 +448,13 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             setRules(d.recurring)
             setInstallments(d.installments)
             setCards(d.cards)
+            setAccounts(d.accounts)
+            setTransfers(d.transfers)
           }}
           onClear={clearAll}
           onReset={() => {
+            setAccounts([])
+            setTransfers([])
             setCards([])
             setInstallments([])
             setRules([])
@@ -423,7 +467,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
       )}
       {form && (
         <Modal title={form.tx ? 'Editar transação' : form.repeat ? 'Nova recorrente' : 'Nova transação'} onClose={() => setForm(null)}>
-          <TransactionForm cards={cards} initial={form.tx} startRepeating={form.repeat} onSave={saveForm} />
+          <TransactionForm cards={cards} accounts={accounts} initial={form.tx} startRepeating={form.repeat} onSave={saveForm} />
         </Modal>
       )}
       {detailItem && (

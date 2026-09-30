@@ -418,3 +418,13 @@ main > .tabs { align-self: flex-start; }
 .profile-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 14px; }
 .profile-row label { flex: 1; display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 13px; }
 .link.center { align-self: center; }
+
+/* contas e previsão */
+.head-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.statement { max-height: 60vh; overflow-y: auto; }
+.forecast { display: flex; flex-direction: column; gap: 12px; }
+.forecast .card-head { margin-bottom: 0; }
+.forecast-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; }
+.forecast-cash { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin: 0; line-height: 1.5; }
+.forecast .link { align-self: flex-start; }
+.nav-label { text-align: center; line-height: 1.1; }

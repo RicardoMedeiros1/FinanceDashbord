@@ -1,7 +1,10 @@
 import { CATEGORIES } from './categories'
 import { brl, daysUntil, formatDate, inMonth, installmentStatus, monthKey, monthLong, monthlyCost, nextCharge, parseISO, shiftMonth, sumBy } from './lib'
+import { accountBalance } from './accounts'
 import { cardInvoices, cardSummary } from './cards'
-import type { Budget, Card, CategoryId, Installment, Subscription, Transaction } from './types'
+import { buildForecast } from './forecast'
+import type { Forecast } from './forecast'
+import type { Account, Budget, Card, CategoryId, Installment, Recurring, Subscription, Transaction, Transfer } from './types'
 
 export interface Insight {
   id: string
@@ -29,6 +32,7 @@ export function buildInsights(
   budgets: Budget[],
   installments: Installment[] = [],
   cards: Card[] = [],
+  forecast?: Forecast,
 ): Insight[] {
   const now = new Date()
   const cur = monthKey(now)
@@ -48,6 +52,18 @@ export function buildInsights(
           ? { id: 'save', tone: 'info', title: 'Poupança abaixo do ideal', text: `Você guarda ${rate.toFixed(0)}% da renda. A meta comum é 20%.` }
           : { id: 'save', tone: 'warn', title: 'Gastos acima da renda', text: `Você já gastou ${brl(expense - income)} a mais do que ganhou este mês.` },
     )
+  }
+
+  // Previsão do mês
+  if (forecast && (forecast.upcomingIncome.length > 0 || forecast.upcomingExpense.length > 0)) {
+    if (forecast.leftover < 0) {
+      out.push({ id: 'forecast', tone: 'warn', title: 'O mês deve fechar no vermelho', text: `Com o que ainda está previsto, faltam ${brl(-forecast.leftover)} até o fim de ${formatDate(forecast.monthEnd)}.` })
+    } else {
+      out.push({ id: 'forecast', tone: 'info', title: `Sobra prevista: ${brl(forecast.leftover)}`, text: `Considerando o que ainda entra (${brl(forecast.upcomingIncome.reduce((a, i) => a + i.amount, 0))}) e sai (${brl(forecast.upcomingExpense.reduce((a, i) => a + i.amount, 0))}) até ${formatDate(forecast.monthEnd)}.` })
+    }
+  }
+  if (forecast?.cash && forecast.cash.expected < 0) {
+    out.push({ id: 'cash', tone: 'warn', title: 'Saldo das contas pode ficar negativo', text: `A previsão no fim do mês é ${brl(forecast.cash.expected)}. Confira faturas e saídas previstas.` })
   }
 
   // Renda fixa x variável (ex.: salário + Uber)
@@ -211,10 +227,11 @@ export const SUGGESTIONS = [
   'Como economizar mais?',
   'Quanto ainda devo em parcelas?',
   'Quando fecham as faturas dos meus cartões?',
+  'Quanto vai sobrar até o fim do mês?',
 ]
 
 /** Assistente local: responde por palavras-chave usando os seus dados (não é um LLM). */
-export function answer(question: string, txs: Transaction[], subs: Subscription[], budgets: Budget[], installments: Installment[] = [], cards: Card[] = []): string {
+export function answer(question: string, txs: Transaction[], subs: Subscription[], budgets: Budget[], installments: Installment[] = [], cards: Card[] = [], extra: { accounts?: Account[]; transfers?: Transfer[]; rules?: Recurring[] } = {}): string {
   const q = norm(question)
   const cur = monthKey(new Date())
   const list = txs.filter((t) => inMonth(t, cur))
@@ -222,6 +239,19 @@ export function answer(question: string, txs: Transaction[], subs: Subscription[
   const expense = sumBy(list, 'expense')
   const byCat = [...spendByCategory(list)].sort((a, b) => b[1] - a[1])
 
+  if (/saldo em conta|minhas contas|saldo das contas|quanto tenho/.test(q)) {
+    const accs = extra.accounts ?? []
+    if (!accs.length) return 'Você ainda não cadastrou contas. Cadastre em Cartões e contas → Contas, com o saldo de hoje.'
+    const bal = accs.map((a) => ({ a, b: accountBalance(a, txs, extra.transfers ?? [], accs) }))
+    return `Saldo total: ${brl(bal.reduce((s, x) => s + x.b, 0))}\n${bal.map((x) => `• ${x.a.name}: ${brl(x.b)}`).join('\n')}`
+  }
+  if (/previs|sobrar|sobra|fim do mes|ate o fim/.test(q)) {
+    const f = buildForecast({ txs, rules: extra.rules ?? [], subs, installments, cards, accounts: extra.accounts ?? [], transfers: extra.transfers ?? [] })
+    const lines = [`Até ${formatDate(f.monthEnd)}: receitas previstas ${brl(f.projectedIncome)}, despesas previstas ${brl(f.projectedExpense)} → ${f.leftover >= 0 ? 'sobra' : 'faltam'} ${brl(Math.abs(f.leftover))}.`]
+    if (f.cash) lines.push(`Saldo previsto nas contas no fim do mês: ${brl(f.cash.expected)}.`)
+    if (f.variableAvg > 0) lines.push(`Renda variável (média de 3 meses, fora da previsão): ${brl(f.variableAvg)}.`)
+    return lines.join('\n')
+  }
   if (/cartao|cartoes|fatura|fecha|limite disponivel/.test(q)) {
     if (!cards.length) return 'Você ainda não cadastrou cartões. Cadastre em Cartões, com o dia de fechamento e de vencimento.'
     return cards

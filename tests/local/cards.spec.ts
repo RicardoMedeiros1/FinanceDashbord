@@ -19,7 +19,7 @@ test('cartões: faturas, limite e vínculo com despesas', async ({ browser, base
   await p.click('button:has-text("Dados")'); await p.click('button:has-text("Começar do zero")'); await p.click('.icon-btn[aria-label="Fechar"]')
 
   // 1) página vazia + cadastrar cartão
-  await p.click('.nav-item[aria-label="Cartões"]'); assert(await p.getByText('Cadastre seus cartões de crédito').isVisible())
+  await p.click('.nav-item[aria-label="Cartões e contas"]'); assert(await p.getByText('Cadastre seus cartões de crédito').isVisible())
   await p.click('button:has-text("Novo cartão")')
   await p.fill('input[placeholder="Ex.: Nubank"]', 'Nubank'); await p.fill('input[placeholder="Ex.: 5"]', '5'); await p.fill('input[placeholder="Ex.: 12"]', '12'); await p.fill('input[placeholder="0,00"]', '5000')
   await p.click('form button.btn.primary'); const cards = await p.evaluate(() => JSON.parse(localStorage.getItem('fd:cards'))); assert(cards.length === 1 && cards[0].closingDay === 5 && cards[0].dueDay === 12 && cards[0].limit === 5000); const cid = cards[0].id
@@ -30,14 +30,14 @@ test('cartões: faturas, limite e vínculo com despesas', async ({ browser, base
   // 2) despesas no cartão
   const add = async (desc, val, date, withCard = true) => {
     await p.click('button:has-text("Nova transação")'); await p.fill('input[placeholder="Ex.: Mercado"]', desc); await p.fill('input[placeholder="0,00"]', val); await p.fill('form input[type=date] >> nth=0', date)
-    if (withCard) await p.getByLabel('Cartão de crédito').selectOption(cid)
+    await p.getByLabel('Forma de pagamento').selectOption(withCard ? 'card:' + cid : '')
     await p.click('form button.btn.primary')
   }
   await add('Mercado', '100', '2026-09-03'); await add('Fechamento', '50', '2026-09-05'); await add('Farmácia', '200', '2026-09-06'); await add('Restaurante', '30', '2026-09-29'); await add('Dinheiro', '77', '2026-09-20', false)
   const txs = await ls('fd:txs'); assert.strictEqual(txs.filter((t) => t.cardId === cid).length, 4); assert(!txs.find((t) => t.description === 'Dinheiro').cardId)
 
   // 3) painel do cartão
-  await p.click('.nav-item[aria-label="Cartões"]'); await sleep(200)
+  await p.click('.nav-item[aria-label="Cartões e contas"]'); await sleep(200)
   const tile = norm(await p.locator('.cc').textContent()); console.log('tile:', tile)
   assert(tile.includes('R$ 230,00') && tile.includes('Fecha em 5 dias') && tile.includes('05 de out') && tile.includes('vence 12 de out'))
   assert(tile.includes('disponível R$ 4.770,00') && tile.includes('Melhor dia de compra: dia 6'))
@@ -63,17 +63,17 @@ test('cartões: faturas, limite e vínculo com despesas', async ({ browser, base
 
   // 6) despesas automáticas herdam o cartão: assinatura, recorrente e parcela
   await p.click('.nav-item[aria-label="Assinaturas"]'); await p.click('button:has-text("Nova assinatura")')
-  await p.fill('input[placeholder="Ex.: Netflix"]', 'Netflix'); await p.fill('input[placeholder="0,00"]', '55,90'); await p.fill('form input[type=date]', '2026-09-01'); await p.getByLabel('Cobrada no cartão').selectOption(cid); await p.click('form button.btn.primary')
+  await p.fill('input[placeholder="Ex.: Netflix"]', 'Netflix'); await p.fill('input[placeholder="0,00"]', '55,90'); await p.fill('form input[type=date]', '2026-09-01'); await p.getByLabel('Cobrada em').selectOption('card:' + cid); await p.click('form button.btn.primary')
   assert((await ls('fd:txs')).find((t) => t.description === 'Netflix').cardId === cid, 'assinatura → cartão')
   await p.click('[role=tab]:has-text("Parcelas")'); await p.click('button:has-text("Nova parcela")')
-  await p.fill('input[placeholder="Ex.: iPhone 15"]', 'TV'); await p.fill('input[placeholder="0,00"]', '300'); await p.fill('input[placeholder="12"]', '4'); await p.fill('form input[type=date] >> nth=0', '2026-08-20'); await p.getByLabel('Cartão próprio em que foi parcelado').selectOption(cid); await p.click('form button.btn.primary')
+  await p.fill('input[placeholder="Ex.: iPhone 15"]', 'TV'); await p.fill('input[placeholder="0,00"]', '300'); await p.fill('input[placeholder="12"]', '4'); await p.fill('form input[type=date] >> nth=0', '2026-08-20'); await p.getByLabel('Pago com (só se for seu)').selectOption('card:' + cid); await p.click('form button.btn.primary')
   const tv = (await ls('fd:txs')).filter((t) => t.description.startsWith('TV')); assert(tv.length >= 1 && tv.every((t) => t.cardId === cid), 'parcelas → cartão'); console.log('parcelas no cartão:', tv.map((t) => t.date).join(','))
   await p.click('.nav-item[aria-label="Transações"]'); await p.click('button:has-text("Nova transação")'); await p.fill('input[placeholder="Ex.: Mercado"]', 'Academia'); await p.fill('input[placeholder="0,00"]', '120'); await p.fill('form input[type=date] >> nth=0', '2026-09-10')
-  await p.getByLabel('Cartão de crédito').selectOption(cid); await p.check('input[type=checkbox]'); await p.click('form button.btn.primary')
+  await p.getByLabel('Forma de pagamento').selectOption('card:' + cid); await p.check('input[type=checkbox]'); await p.click('form button.btn.primary')
   const rule = (await ls('fd:rules'))[0]; assert.strictEqual(rule.cardId, cid); assert((await ls('fd:txs')).find((t) => t.description === 'Academia').cardId === cid, 'recorrente → cartão')
 
   // 7) editar compra: tirar do cartão
-  await p.selectOption('.toolbar select', '2026-09'); await p.click('button[aria-label^="Editar Restaurante"]'); await p.getByLabel('Cartão de crédito').selectOption(''); await p.click('form button.btn.primary')
+  await p.selectOption('.toolbar select', '2026-09'); await p.click('button[aria-label^="Editar Restaurante"]'); await p.getByLabel('Forma de pagamento').selectOption(''); await p.click('form button.btn.primary')
   assert(!(await ls('fd:txs')).find((t) => t.description === 'Restaurante').cardId)
 
   // 8) assistente
@@ -82,7 +82,7 @@ test('cartões: faturas, limite e vínculo com despesas', async ({ browser, base
 
   // 9) excluir cartão mantém compras
   const n = (await ls('fd:txs')).length
-  await p.click('.nav-item[aria-label="Cartões"]'); await p.click('.cc button:has-text("Ver faturas")'); await p.click(`button[aria-label="Excluir Nubank"]`); await sleep(200)
+  await p.click('.nav-item[aria-label="Cartões e contas"]'); await p.click('.cc button:has-text("Ver faturas")'); await p.click(`button[aria-label="Excluir Nubank"]`); await sleep(200)
   assert.strictEqual((await ls('fd:cards')).length, 0); const after = await ls('fd:txs'); assert.strictEqual(after.length, n); assert(after.every((t) => !t.cardId)); assert((await ls('fd:subs')).every((s) => !s.cardId)); assert((await ls('fd:rules')).every((r) => !r.cardId))
   assert.strictEqual(await p.evaluate(() => location.hash), '#/cards')
 

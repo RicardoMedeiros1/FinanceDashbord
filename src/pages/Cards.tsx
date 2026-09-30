@@ -1,11 +1,13 @@
 import { ArrowLeft, Check, CreditCard, Pencil, Plus, RotateCcw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { cardInvoices, cardSummary, type Invoice, type InvoiceStatus } from '../cards'
+import { AccountsTab } from '../components/AccountsTab'
 import { CardForm } from '../components/CardForm'
 import { Modal } from '../components/Modal'
 import { Money } from '../components/Money'
-import { brl, formatDate, monthLong } from '../lib'
-import type { Card, Transaction } from '../types'
+import { Tabs } from '../components/Tabs'
+import { brl, formatDate, monthLong, toISO } from '../lib'
+import type { Account, Card, Transaction, Transfer } from '../types'
 
 const STATUS: Record<InvoiceStatus, { label: string; cls: string }> = {
   open: { label: 'Aberta', cls: '' },
@@ -15,19 +17,64 @@ const STATUS: Record<InvoiceStatus, { label: string; cls: string }> = {
   future: { label: 'Futura', cls: '' },
 }
 
+export type CardsTab = 'cards' | 'accounts'
+
 interface Props {
+  tab: CardsTab
+  onTab: (t: CardsTab) => void
   cards: Card[]
+  accounts: Account[]
+  transfers: Transfer[]
   txs: Transaction[]
   sub: string // id do cartão aberto (vazio = lista)
   onOpen: (id: string) => void
   onBack: () => void
   onSave: (c: Omit<Card, 'id' | 'paid'>, id?: string) => void
   onDelete: (id: string) => void
-  onTogglePaid: (cardId: string, key: string) => void
+  onPayInvoice: (cardId: string, key: string, opts?: { accountId: string; date: string; amount: number }) => void
+  onUnpayInvoice: (cardId: string, key: string) => void
+  onSaveAccount: (a: Omit<Account, 'id'>, id?: string) => void
+  onDeleteAccount: (id: string) => void
+  onTransfer: (t: Omit<Transfer, 'id' | 'kind'>) => void
+  onDeleteTransfer: (id: string) => void
 }
 
-export function Cards({ cards, txs, sub, onOpen, onBack, onSave, onDelete, onTogglePaid }: Props) {
+/** Escolhe de qual conta a fatura foi paga (o valor e a data podem ser ajustados). */
+function PayInvoiceForm({ accounts, total, onSave }: { accounts: Account[]; total: number; onSave: (o: { accountId: string; date: string; amount: number }) => void }) {
+  const [accountId, setAccountId] = useState(accounts[0]?.id ?? '')
+  const [date, setDate] = useState(toISO(new Date()))
+  const [amount, setAmount] = useState(String(total).replace('.', ','))
+  const value = Number(amount.replace(',', '.'))
+  const valid = accountId && date && value > 0
+  return (
+    <form className="form" onSubmit={(e) => { e.preventDefault(); if (valid) onSave({ accountId, date, amount: value }) }}>
+      <label>
+        Paga com a conta
+        <select value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+          {accounts.map((a) => (
+            <option key={a.id} value={a.id}>{a.name}</option>
+          ))}
+        </select>
+      </label>
+      <div className="row">
+        <label>
+          Valor pago (R$)
+          <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" />
+        </label>
+        <label>
+          Data do pagamento
+          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        </label>
+      </div>
+      <p className="muted small hint">O valor sai do saldo da conta, mas não vira uma despesa nova: as compras já foram contadas no dia em que foram feitas.</p>
+      <button className="btn primary" disabled={!valid}>Confirmar pagamento</button>
+    </form>
+  )
+}
+
+export function Cards({ tab, onTab, cards, accounts, transfers, txs, sub, onOpen, onBack, onSave, onDelete, onPayInvoice, onUnpayInvoice, onSaveAccount, onDeleteAccount, onTransfer, onDeleteTransfer }: Props) {
   const [form, setForm] = useState<{ item?: Card } | null>(null)
+  const [paying, setPaying] = useState<{ card: Card; inv: Invoice } | null>(null)
   const card = cards.find((c) => c.id === sub)
 
   const modal = form && (
@@ -37,6 +84,18 @@ export function Cards({ cards, txs, sub, onOpen, onBack, onSave, onDelete, onTog
         onSave={(c) => {
           onSave(c, form.item?.id)
           setForm(null)
+        }}
+      />
+    </Modal>
+  )
+  const payModal = paying && (
+    <Modal title={`Pagar fatura — ${paying.card.name}`} onClose={() => setPaying(null)}>
+      <PayInvoiceForm
+        accounts={accounts}
+        total={paying.inv.total}
+        onSave={(o) => {
+          onPayInvoice(paying.card.id, paying.inv.key, o)
+          setPaying(null)
         }}
       />
     </Modal>
@@ -56,15 +115,39 @@ export function Cards({ cards, txs, sub, onOpen, onBack, onSave, onDelete, onTog
               onBack()
             }
           }}
-          onTogglePaid={(key) => onTogglePaid(card.id, key)}
+          onPay={(inv) => (accounts.length ? setPaying({ card, inv }) : onPayInvoice(card.id, inv.key))}
+          onUnpay={(key) => onUnpayInvoice(card.id, key)}
         />
         {modal}
+        {payModal}
+      </>
+    )
+  }
+
+  const tabs = (
+    <Tabs
+      label="Cartões e contas"
+      active={tab}
+      onChange={onTab}
+      tabs={[
+        { id: 'cards', label: 'Cartões', count: cards.length },
+        { id: 'accounts', label: 'Contas', count: accounts.length },
+      ]}
+    />
+  )
+
+  if (tab === 'accounts') {
+    return (
+      <>
+        {tabs}
+        <AccountsTab accounts={accounts} txs={txs} transfers={transfers} onSave={onSaveAccount} onDelete={onDeleteAccount} onTransfer={onTransfer} onDeleteTransfer={onDeleteTransfer} />
       </>
     )
   }
 
   return (
     <>
+      {tabs}
       <div className="section-head">
         <h3>Seus cartões</h3>
         <button className="btn primary" onClick={() => setForm({})}><Plus size={16} /> Novo cartão</button>
@@ -123,7 +206,7 @@ export function Cards({ cards, txs, sub, onOpen, onBack, onSave, onDelete, onTog
   )
 }
 
-function CardDetail({ card, txs, onBack, onEdit, onDelete, onTogglePaid }: { card: Card; txs: Transaction[]; onBack: () => void; onEdit: () => void; onDelete: () => void; onTogglePaid: (key: string) => void }) {
+function CardDetail({ card, txs, onBack, onEdit, onDelete, onPay, onUnpay }: { card: Card; txs: Transaction[]; onBack: () => void; onEdit: () => void; onDelete: () => void; onPay: (inv: Invoice) => void; onUnpay: (key: string) => void }) {
   const invoices = cardInvoices(card, txs)
   const s = cardSummary(card, txs)
   const [openKeys, setOpenKeys] = useState<Set<string>>(() => new Set(invoices.filter((i) => i.status === 'open' || i.status === 'closed' || (i.status === 'overdue' && i.total > 0)).map((i) => i.key)))
@@ -149,14 +232,14 @@ function CardDetail({ card, txs, onBack, onEdit, onDelete, onTogglePaid }: { car
 
       <ul className="invoices">
         {invoices.map((i) => (
-          <InvoiceRow key={i.key} inv={i} open={openKeys.has(i.key)} onToggle={() => toggle(i.key)} onTogglePaid={() => onTogglePaid(i.key)} />
+          <InvoiceRow key={i.key} inv={i} open={openKeys.has(i.key)} onToggle={() => toggle(i.key)} onPay={() => onPay(i)} onUnpay={() => onUnpay(i.key)} />
         ))}
       </ul>
     </>
   )
 }
 
-function InvoiceRow({ inv, open, onToggle, onTogglePaid }: { inv: Invoice; open: boolean; onToggle: () => void; onTogglePaid: () => void }) {
+function InvoiceRow({ inv, open, onToggle, onPay, onUnpay }: { inv: Invoice; open: boolean; onToggle: () => void; onPay: () => void; onUnpay: () => void }) {
   const st = STATUS[inv.status]
   return (
     <li className="card invoice">
@@ -186,10 +269,10 @@ function InvoiceRow({ inv, open, onToggle, onTogglePaid }: { inv: Invoice; open:
             </ul>
           )}
           {(inv.status === 'closed' || inv.status === 'overdue') && (
-            <button className="btn primary" onClick={onTogglePaid}><Check size={15} /> Marcar como paga</button>
+            <button className="btn primary" onClick={onPay}><Check size={15} /> Marcar como paga</button>
           )}
           {inv.status === 'paid' && (
-            <button className="btn ghost" onClick={onTogglePaid}><RotateCcw size={15} /> Desfazer pagamento</button>
+            <button className="btn ghost" onClick={onUnpay}><RotateCcw size={15} /> Desfazer pagamento</button>
           )}
         </div>
       )}

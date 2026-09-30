@@ -9,7 +9,10 @@ import { StatCard } from '../components/StatCard'
 import { buildInsights } from '../insights'
 import { brl, brlShort, daysUntil, formatDate, installmentStatus, parseISO, inMonth, monthKey, monthLabel, monthlyCost, nextCharge, shiftMonth, sumBy, toISO } from '../lib'
 import { nextInvoiceToPay } from '../cards'
-import type { Budget, Card, Goal, Installment, Page, Subscription, Transaction } from '../types'
+import { accountBalance, totalBalance } from '../accounts'
+import { ForecastCard } from '../components/ForecastCard'
+import { buildForecast } from '../forecast'
+import type { Account, Budget, Card, Goal, Installment, Page, Recurring, Subscription, Transaction, Transfer } from '../types'
 
 const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null)
 
@@ -20,6 +23,9 @@ interface Props {
   subs: Subscription[]
   installments: Installment[]
   cards: Card[]
+  accounts: Account[]
+  transfers: Transfer[]
+  rules: Recurring[]
   budgets: Budget[]
   goals: Goal[]
   onNavigate: (p: Page) => void
@@ -27,7 +33,7 @@ interface Props {
   onDeposit: (id: string, amount: number) => void
 }
 
-export function Overview({ txs, subs, installments, cards, budgets, goals, onNavigate, onAddGoal, onDeposit }: Props) {
+export function Overview({ txs, subs, installments, cards, accounts, transfers, rules, budgets, goals, onNavigate, onAddGoal, onDeposit }: Props) {
   const [range, setRange] = useState<'30d' | '6m'>('30d')
 
   const months = useMemo(
@@ -66,7 +72,8 @@ export function Overview({ txs, subs, installments, cards, budgets, goals, onNav
     [txs],
   )
 
-  const insights = useMemo(() => buildInsights(txs, subs, budgets, installments, cards), [txs, subs, budgets, installments, cards])
+  const forecast = useMemo(() => buildForecast({ txs, rules, subs, installments, cards, accounts, transfers }), [txs, rules, subs, installments, cards, accounts, transfers])
+  const insights = useMemo(() => buildInsights(txs, subs, budgets, installments, cards, forecast), [txs, subs, budgets, installments, cards, forecast])
 
   const upcoming = [
     ...activeSubs.map((x) => ({ id: x.id, name: x.name, color: x.color, date: nextCharge(x), price: x.price, note: '' })),
@@ -122,6 +129,8 @@ export function Overview({ txs, subs, installments, cards, budgets, goals, onNav
             </div>
           </div>
 
+          <ForecastCard f={forecast} />
+
           <div className="card">
             <div className="card-head">
               <h3>Transações recentes</h3>
@@ -144,6 +153,24 @@ export function Overview({ txs, subs, installments, cards, budgets, goals, onNav
         </div>
 
         <div className="col">
+          {accounts.length > 0 && (
+            <div className="card">
+              <div className="card-head">
+                <h3>Contas</h3>
+                <button className="link" onClick={() => onNavigate('cards')}>Ver todas</button>
+              </div>
+              <div className="stat-value" data-testid="accounts-total"><Money value={totalBalance(accounts, txs, transfers)} /></div>
+              <ul className="list compact">
+                {accounts.map((a) => (
+                  <li key={a.id}>
+                    <span className="dot lg" style={{ background: a.color }} />
+                    <div className="grow"><strong>{a.name}</strong></div>
+                    <strong>{brl(accountBalance(a, txs, transfers, accounts))}</strong>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="card">
             <div className="card-head">
               <h3>Próximos pagamentos</h3>

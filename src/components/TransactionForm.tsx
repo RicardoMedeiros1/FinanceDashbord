@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../categories'
 import { toISO } from '../lib'
-import type { Card, CategoryId, Cycle, Transaction } from '../types'
+import type { Account, Card, CategoryId, Cycle, Transaction } from '../types'
+import { defaultPay, payIds, PaymentSelect, payValue, rememberPay } from './PaymentSelect'
 
 interface Props {
   cards: Card[]
+  accounts: Account[]
   /** Presente ao editar um lançamento existente. */
   initial?: Transaction
   /** Abre já com "Repetir" marcado (ao criar uma recorrente). */
@@ -12,20 +14,23 @@ interface Props {
   onSave: (t: Omit<Transaction, 'id' | 'ruleId'>, repeat: Cycle | null) => void
 }
 
-export function TransactionForm({ cards, initial, startRepeating, onSave }: Props) {
+export function TransactionForm({ cards, accounts, initial, startRepeating, onSave }: Props) {
   const [type, setType] = useState<Transaction['type']>(initial?.type ?? 'expense')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '')
   const [category, setCategory] = useState<CategoryId>(initial && initial.type === 'expense' ? initial.category : 'alimentacao')
   const [incomeCat, setIncomeCat] = useState<CategoryId>(initial && initial.type === 'income' ? initial.category : (startRepeating ? 'salario' : 'variavel'))
   const [date, setDate] = useState(initial?.date ?? toISO(new Date()))
-  const [cardId, setCardId] = useState(initial?.cardId ?? '')
+  const [pay, setPay] = useState(() => (initial ? payValue(initial) : defaultPay('expense', accounts, cards, true)))
+  const [payTouched, setPayTouched] = useState(!!initial)
   const [repeat, setRepeat] = useState(startRepeating ?? false)
   const [repeatTouched, setRepeatTouched] = useState(false)
   const [cycle, setCycle] = useState<Cycle>('monthly')
 
   // salário fixo costuma se repetir todo mês: já sugere repetir, até você mexer na caixa
   const repeating = repeatTouched ? repeat : repeat || (!initial && type === 'income' && incomeCat === 'salario')
+  // ao trocar entre despesa e receita, sugere a forma usada da última vez (até você escolher)
+  const effectivePay = payTouched ? (type === 'income' && pay.startsWith('card:') ? '' : pay) : defaultPay(type, accounts, cards, type === 'expense')
   const value = Number(amount.replace(',', '.'))
   const valid = description.trim() && value > 0 && date
 
@@ -35,8 +40,9 @@ export function TransactionForm({ cards, initial, startRepeating, onSave }: Prop
       onSubmit={(e) => {
         e.preventDefault()
         if (!valid) return
+        if (!initial) rememberPay(type, effectivePay)
         onSave(
-          { description: description.trim(), amount: value, type, category: type === 'income' ? incomeCat : category, date, cardId: type === 'expense' && cardId ? cardId : undefined },
+          { description: description.trim(), amount: value, type, category: type === 'income' ? incomeCat : category, date, cardId: type === 'expense' ? payIds(effectivePay).cardId : undefined, accountId: payIds(effectivePay).accountId },
           repeating && !initial ? cycle : null,
         )
       }}
@@ -88,17 +94,15 @@ export function TransactionForm({ cards, initial, startRepeating, onSave }: Prop
           </select>
         </label>
       )}
-      {type === 'expense' && cards.length > 0 && (
-        <label>
-          Cartão de crédito
-          <select value={cardId} onChange={(e) => setCardId(e.target.value)}>
-            <option value="">Nenhum (dinheiro, débito ou Pix)</option>
-            {cards.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </label>
-      )}
+      <PaymentSelect
+        label={type === 'expense' ? 'Forma de pagamento' : 'Conta que recebe'}
+        none={type === 'expense' ? 'Nenhuma (dinheiro, Pix ou débito sem conta)' : 'Nenhuma'}
+        value={effectivePay}
+        onChange={(v) => { setPay(v); setPayTouched(true) }}
+        accounts={accounts}
+        cards={cards}
+        allowCards={type === 'expense'}
+      />
       {!initial && (
         <div className="repeat">
           <label className="check">

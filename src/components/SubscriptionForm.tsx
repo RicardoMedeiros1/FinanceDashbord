@@ -1,18 +1,20 @@
 import { useState } from 'react'
 import { CATEGORIES, EXPENSE_CATEGORIES } from '../categories'
 import { brl, formatDate, lastCharge, toISO } from '../lib'
-import type { Card, CategoryId, Subscription } from '../types'
+import type { Account, Card, CategoryId, Subscription } from '../types'
+import { payIds, PaymentSelect, payValue } from './PaymentSelect'
 
 const COLORS = ['#8b5cf6', '#e50914', '#1db954', '#38bdf8', '#f59e0b', '#f472b6', '#10a37f', '#6366f1']
 
 interface Props {
   cards: Card[]
+  accounts: Account[]
   initial?: Subscription
   /** includeLast: lançar como despesa a cobrança deste mês que já aconteceu (só ao criar). */
   onSave: (s: Omit<Subscription, 'id' | 'active' | 'chargedUntil'>, includeLast: boolean) => void
 }
 
-export function SubscriptionForm({ cards, initial, onSave }: Props) {
+export function SubscriptionForm({ cards, accounts, initial, onSave }: Props) {
   const [name, setName] = useState(initial?.name ?? '')
   const [price, setPrice] = useState(initial ? String(initial.price).replace('.', ',') : '')
   const [cycle, setCycle] = useState<Subscription['cycle']>(initial?.cycle ?? 'monthly')
@@ -20,7 +22,7 @@ export function SubscriptionForm({ cards, initial, onSave }: Props) {
   const [category, setCategory] = useState<CategoryId>(initial?.category ?? 'assinaturas')
   const [color, setColor] = useState(initial?.color ?? COLORS[0])
   const [includeLast, setIncludeLast] = useState(true)
-  const [cardId, setCardId] = useState(initial?.cardId ?? '')
+  const [pay, setPay] = useState(initial ? payValue(initial) : '')
 
   const value = Number(price.replace(',', '.'))
   const valid = name.trim() && value > 0 && billingDate
@@ -35,7 +37,7 @@ export function SubscriptionForm({ cards, initial, onSave }: Props) {
       className="form"
       onSubmit={(e) => {
         e.preventDefault()
-        if (valid) onSave({ name: name.trim(), price: value, cycle, billingDate, color, category, cardId: cardId || undefined }, offerLast && includeLast)
+        if (valid) onSave({ name: name.trim(), price: value, cycle, billingDate, color, category, cardId: payIds(pay).cardId, accountId: payIds(pay).accountId }, offerLast && includeLast)
       }}
     >
       <label>
@@ -67,17 +69,7 @@ export function SubscriptionForm({ cards, initial, onSave }: Props) {
           ))}
         </select>
       </label>
-      {cards.length > 0 && (
-        <label>
-          Cobrada no cartão
-          <select value={cardId} onChange={(e) => setCardId(e.target.value)}>
-            <option value="">Nenhum (débito, Pix ou boleto)</option>
-            {cards.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </label>
-      )}
+      <PaymentSelect label="Cobrada em" none="Nenhuma (boleto, Pix avulso)" value={pay} onChange={setPay} accounts={accounts} cards={cards} />
       <div className="swatches">
         {COLORS.map((c) => (
           <button type="button" key={c} className={`swatch ${c === color ? 'on' : ''}`} style={{ background: c }} onClick={() => setColor(c)} aria-label={`Cor ${c}`} />

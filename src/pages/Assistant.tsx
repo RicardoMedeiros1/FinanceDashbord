@@ -1,11 +1,11 @@
 import { ArrowUp } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { answer, SUGGESTIONS } from '../insights'
-import type { Budget, Card, Installment, Subscription, Transaction } from '../types'
+import type { Account, Budget, Card, Installment, Recurring, Subscription, Transaction, Transfer } from '../types'
 
 interface Msg { from: 'me' | 'bot'; text: string }
 
-export function Assistant({ txs, subs, budgets, installments, cards }: { txs: Transaction[]; subs: Subscription[]; budgets: Budget[]; installments: Installment[]; cards: Card[] }) {
+export function Assistant({ txs, subs, budgets, installments, cards, accounts, transfers, rules }: { txs: Transaction[]; subs: Subscription[]; budgets: Budget[]; installments: Installment[]; cards: Card[]; accounts: Account[]; transfers: Transfer[]; rules: Recurring[] }) {
   const [msgs, setMsgs] = useState<Msg[]>([])
   const [text, setText] = useState('')
   const end = useRef<HTMLDivElement>(null)
@@ -14,7 +14,7 @@ export function Assistant({ txs, subs, budgets, installments, cards }: { txs: Tr
 
   const ask = (q: string) => {
     if (!q.trim()) return
-    setMsgs((m) => [...m, { from: 'me', text: q }, { from: 'bot', text: answer(q, txs, subs, budgets, installments, cards) }])
+    setMsgs((m) => [...m, { from: 'me', text: q }, { from: 'bot', text: answer(q, txs, subs, budgets, installments, cards, { accounts, transfers, rules }) }])
     setText('')
   }
 

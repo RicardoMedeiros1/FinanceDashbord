@@ -12,6 +12,8 @@ interface Props {
   cards: Card[]
   accounts: Account[]
   onImport: (list: Transaction[]) => void
+  /** lançamentos que já viraram transferência: não voltam ao importar o mesmo arquivo */
+  knownIds?: string[]
   onClose: () => void
 }
 
@@ -48,7 +50,7 @@ function ColumnMapper({ table, onApply }: { table: CsvTable; onApply: (rows: Imp
   )
 }
 
-export function ImportModal({ txs, cards, accounts, onImport, onClose }: Props) {
+export function ImportModal({ txs, cards, accounts, onImport, knownIds = [], onClose }: Props) {
   const [rows, setRows] = useState<ImportRow[] | null>(null)
   const [table, setTable] = useState<CsvTable | undefined>()
   const [format, setFormat] = useState<'ofx' | 'csv'>('csv')
@@ -63,7 +65,7 @@ export function ImportModal({ txs, cards, accounts, onImport, onClose }: Props) 
 
   const target = payIds(pay)
   const effMode: Interpretation = mode ?? (target.cardId ? 'card' : 'account')
-  const candidates = useMemo(() => (rows ? buildCandidates(rows, effMode, txs) : []), [rows, effMode, txs])
+  const candidates = useMemo(() => (rows ? buildCandidates(rows, effMode, txs, knownIds) : []), [rows, effMode, txs, knownIds])
   const selectable = (c: Candidate) => c.status !== 'imported' && !(target.cardId && c.type === 'income')
   const selected = picked ?? new Set(candidates.filter((c) => c.status === 'ok' && selectable(c)).map((c) => c.id))
   const chosen = candidates.filter((c) => selected.has(c.id) && selectable(c))

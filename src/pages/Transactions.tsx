@@ -1,10 +1,13 @@
-import { Paperclip, Pencil, PieChart, Plus, Repeat, Search, Trash2, Upload } from 'lucide-react'
+import { ArrowLeftRight, Paperclip, Pencil, PieChart, Plus, Repeat, Search, Trash2, Upload } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { CATEGORIES } from '../categories'
 import { Tabs } from '../components/Tabs'
 import { brl, CYCLE_LABEL, formatDate, monthKey, monthLong, nextOccurrence, sumBy } from '../lib'
 import { ImportModal } from '../components/ImportModal'
 import { SpendingView } from '../components/SpendingView'
+import { MarkTransferModal } from '../components/MarkTransferModal'
+import { TransferReviewModal } from '../components/TransferReviewModal'
+import { findTransferMatches, type TransferMatch } from '../transfers'
 import type { Account, Card, Recurring, SpendGroup, Transaction } from '../types'
 
 type Filter = 'all' | 'income' | 'expense'
@@ -12,6 +15,9 @@ type Filter = 'all' | 'income' | 'expense'
 export type TxView = 'list' | 'recurring' | 'merchants'
 
 interface Props {
+  knownIds: string[]
+  onConvertTransfers: (list: TransferMatch[]) => void
+  onMarkTransfer: (tx: Transaction, from: string, to: string) => void
   groups: SpendGroup[]
   onSaveGroup: (name: string, terms: string) => void
   onDeleteGroup: (id: string) => void
@@ -33,8 +39,11 @@ interface Props {
 
 const tagStyle = (color: string) => ({ '--c': color }) as React.CSSProperties
 
-export function Transactions({ groups, onSaveGroup, onDeleteGroup, accounts, onImport, cards, receiptIds, onOpenReceipt, view, onView, txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
+export function Transactions({ knownIds, onConvertTransfers, onMarkTransfer, groups, onSaveGroup, onDeleteGroup, accounts, onImport, cards, receiptIds, onOpenReceipt, view, onView, txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
   const [importing, setImporting] = useState(false)
+  const [reviewing, setReviewing] = useState(false)
+  const [marking, setMarking] = useState<Transaction | null>(null)
+  const matches = useMemo(() => findTransferMatches(txs, accounts), [txs, accounts])
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [month, setMonth] = useState(monthKey(new Date()))
@@ -75,6 +84,14 @@ export function Transactions({ groups, onSaveGroup, onDeleteGroup, accounts, onI
           <button className="btn" onClick={() => setImporting(true)}><Upload size={16} /> Importar extrato</button>
         )}
       </div>
+
+      {view !== 'recurring' && matches.length > 0 && (
+        <div className="transfer-banner" role="status">
+          <ArrowLeftRight size={16} />
+          <span className="grow">Encontrei <strong>{matches.length}</strong> {matches.length === 1 ? 'possível transferência' : 'possíveis transferências'} entre as suas contas. Elas estão contando como despesa e receita.</span>
+          <button className="btn" onClick={() => setReviewing(true)}>Revisar</button>
+        </div>
+      )}
 
       {view === 'merchants' ? (
         <SpendingView txs={txs} groups={groups} onSaveGroup={onSaveGroup} onDeleteGroup={onDeleteGroup} />
@@ -127,6 +144,7 @@ export function Transactions({ groups, onSaveGroup, onDeleteGroup, accounts, onI
                     <td className="muted">{formatDate(t.date)}</td>
                     <td className={`right ${t.type === 'income' ? 'pos' : ''}`}>{t.type === 'income' ? '+' : '−'} {brl(t.amount)}</td>
                     <td className="right actions">
+                      {accounts.length > 0 && !t.cardId && <button className="icon-btn" onClick={() => setMarking(t)} aria-label={`Marcar ${t.description} como transferência`} title="Marcar como transferência"><ArrowLeftRight size={15} /></button>}
                       <button className="icon-btn" onClick={() => onEdit(t)} aria-label={`Editar ${t.description}`}><Pencil size={15} /></button>
                       <button className="icon-btn" onClick={() => onDelete(t.id)} aria-label={`Excluir ${t.description}`}><Trash2 size={15} /></button>
                     </td>
@@ -160,7 +178,9 @@ export function Transactions({ groups, onSaveGroup, onDeleteGroup, accounts, onI
           )}
         </ul>
       )}
-      {importing && <ImportModal txs={txs} cards={cards} accounts={accounts} onImport={onImport} onClose={() => setImporting(false)} />}
+      {importing && <ImportModal txs={txs} cards={cards} accounts={accounts} onImport={onImport} knownIds={knownIds} onClose={() => setImporting(false)} />}
+      {reviewing && <TransferReviewModal matches={matches} accounts={accounts} onConvert={(l) => { onConvertTransfers(l); setReviewing(false) }} onClose={() => setReviewing(false)} />}
+      {marking && <MarkTransferModal tx={marking} accounts={accounts} onSave={(f, to) => { onMarkTransfer(marking, f, to); setMarking(null) }} onClose={() => setMarking(null)} />}
     </div>
   )
 }

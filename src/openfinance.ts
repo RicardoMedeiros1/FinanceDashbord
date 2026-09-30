@@ -2,7 +2,8 @@
 // Tudo aqui é função pura (sem rede), para poder testar sem banco de verdade.
 import { buildHistory, normDesc, suggestCategory } from './importer'
 import { toISO, uid } from './lib'
-import type { Account, BankLink, Card, CategoryId, Transaction } from './types'
+import { convertedIds } from './transfers'
+import type { Account, BankLink, Card, CategoryId, Transaction, Transfer } from './types'
 import type { BankAccount, BankSyncResponse, BankTx } from '../supabase/functions/pluggy/index'
 
 export type { BankAccount, BankSyncResponse, BankTx }
@@ -71,6 +72,7 @@ export interface PlanInput {
   accounts: Account[]
   cards: Card[]
   txs: Transaction[]
+  transfers?: Transfer[]
   now?: Date
   newId?: () => string
 }
@@ -85,8 +87,9 @@ const slot = (date: string, type: string, amount: number) => `${date}|${type}|${
  * - importa só o que ainda não foi importado (id `pl-…`), sem os movimentos pendentes;
  * - não importa o que já foi lançado à mão ou por arquivo (mesma data, tipo e valor) nem pagamento de fatura: vão para `skipped`.
  */
-export function planSync({ response, links, accounts, cards, txs, now = new Date(), newId = uid }: PlanInput): Plan {
-  const known = new Set(txs.map((t) => t.id))
+export function planSync({ response, links, accounts, cards, txs, transfers = [], now = new Date(), newId = uid }: PlanInput): Plan {
+  // o que já virou transferência entre contas também conta como importado
+  const known = new Set([...txs.map((t) => t.id), ...convertedIds(transfers)])
   const history = buildHistory(txs)
   // lançamentos "manuais" (não vindos da Pluggy) que podem ser o mesmo movimento do banco
   const manual = new Map<string, Transaction[]>()

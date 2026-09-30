@@ -519,3 +519,12 @@ main > .tabs { align-self: flex-start; }
 /* o conteúdo nunca alarga a página: tabelas largas rolam dentro do cartão */
 main { min-width: 0; }
 .card { min-width: 0; }
+
+/* transferências entre contas */
+.transfer-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; padding: 10px 14px; border: 1px solid color-mix(in srgb, #e0a30f 45%, var(--border)); border-radius: 12px; background: rgba(224, 163, 15, 0.08); }
+.transfer-review .check { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; width: 100%; }
+.transfer-review .check .grow { display: flex; flex-direction: column; gap: 2px; }
+.transfer-route { display: inline-flex; align-items: center; gap: 6px; }
+.transfer-review input[type=checkbox] { margin-top: 4px; width: auto; }
+.transfer-banner .grow { flex: 1; min-width: 220px; }
+.transfer-review .badge { margin-left: 0; align-self: flex-start; }

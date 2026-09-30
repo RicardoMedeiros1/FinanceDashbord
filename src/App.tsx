@@ -13,6 +13,7 @@ import { Sidebar } from './components/Sidebar'
 import { SyncBadge } from './components/SyncBadge'
 import { TransactionForm } from './components/TransactionForm'
 import { needsAutoSync, planSync, syncRequest } from './openfinance'
+import { convertedIds, matchToTransfer, singleToTransfer, type TransferMatch } from './transfers'
 import { seedBudgets, seedGoals, seedSubscriptions, seedTransactions } from './data'
 import { applyInstallments, applyRecurring, applySubscriptions, initialChargedUntil, installmentStatus, missingInstallmentTxs, setHideValues, skipToToday, uid } from './lib'
 import { Assistant } from './pages/Assistant'
@@ -337,7 +338,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     try {
       const response = await cloud.auth.bankSync(syncRequest(list))
       const d = dataRef.current
-      const plan = planSync({ response, links: list, accounts: d.accounts, cards: d.cards, txs: d.txs })
+      const plan = planSync({ response, links: list, accounts: d.accounts, cards: d.cards, txs: d.txs, transfers: d.transfers })
       if (plan.accounts.length) setAccounts((l) => [...l, ...plan.accounts])
       if (plan.cards.length) setCards((l) => [...l, ...plan.cards])
       if (plan.txs.length || plan.patches.length)
@@ -372,6 +373,29 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     if (needsAutoSync(banks)) void syncBank()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cloud, syncReady, banks])
+
+  // ---------- transferências entre as suas contas ----------
+  const knownIds = useMemo(() => convertedIds(transfers), [transfers])
+  const convertTransfers = (list: TransferMatch[]) => {
+    const gone = new Set(list.flatMap((m) => [m.expense.id, m.income.id]))
+    setTxs((l) => l.filter((t) => !gone.has(t.id)))
+    setTransfers((l) => [...l, ...list.map((m) => matchToTransfer(m))])
+  }
+  const markTransfer = (tx: Transaction, from: string, to: string) => {
+    setTxs((l) => l.filter((t) => t.id !== tx.id))
+    setTransfers((l) => [...l, singleToTransfer(tx, from, to)])
+  }
+  // desfazer: os lançamentos originais voltam (e a transferência some)
+  const deleteTransfer = (id: string) => {
+    const tr = transfers.find((t) => t.id === id)
+    if (tr?.origin?.length) {
+      setTxs((l) => {
+        const ids = new Set(l.map((t) => t.id))
+        return [...tr.origin!.filter((o) => !ids.has(o.id)), ...l]
+      })
+    }
+    setTransfers((l) => l.filter((t) => t.id !== id))
+  }
 
   const deleteAccountNow = async () => {
     if (!cloud) return
@@ -449,6 +473,9 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
         )}
         {page === 'transactions' && (
           <Transactions
+            knownIds={knownIds}
+            onConvertTransfers={convertTransfers}
+            onMarkTransfer={markTransfer}
             groups={groups}
             onSaveGroup={saveGroup}
             onDeleteGroup={(id) => updateGroups((l) => l.filter((g) => g.id !== id))}
@@ -513,7 +540,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             onSaveAccount={saveAccount}
             onDeleteAccount={deleteAccount}
             onTransfer={(t) => setTransfers((l) => [...l, { ...t, id: uid(), kind: 'transfer' }])}
-            onDeleteTransfer={(id) => setTransfers((l) => l.filter((t) => t.id !== id))}
+            onDeleteTransfer={deleteTransfer}
             cards={cards}
             txs={txs}
             sub={sub === 'contas' ? '' : sub}

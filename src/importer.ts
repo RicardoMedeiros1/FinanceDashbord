@@ -317,9 +317,9 @@ export interface Candidate {
  * Prepara as linhas para importar: tipo pelo sinal (extrato de conta: negativo = despesa; fatura de cartão: positivo = despesa),
  * categoria sugerida, id estável (não duplica se importar o mesmo arquivo de novo) e o estado de cada linha.
  */
-export function buildCandidates(rows: ImportRow[], mode: Interpretation, existing: Transaction[]): Candidate[] {
+export function buildCandidates(rows: ImportRow[], mode: Interpretation, existing: Transaction[], extraKnownIds: string[] = []): Candidate[] {
   const history = buildHistory(existing)
-  const ids = new Set(existing.map((t) => t.id))
+  const ids = new Set([...existing.map((t) => t.id), ...extraKnownIds])
   const sameSlot = new Set(existing.map((t) => `${t.date}|${t.type}|${t.amount.toFixed(2)}`))
   const seen = new Map<string, number>()
   return rows.map((r) => {

@@ -150,4 +150,6 @@ export interface Transfer {
   kind: 'transfer' | 'invoice'
   cardId?: string
   invoiceKey?: string
+  /** lançamentos que viraram esta transferência (para desfazer, e para o banco não importá-los de novo) */
+  origin?: Transaction[]
 }

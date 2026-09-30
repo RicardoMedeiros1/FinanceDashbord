@@ -101,7 +101,7 @@ export function planSync({ response, links, accounts, cards, txs, now = new Date
       plan.warnings.push(
         item.error === 'not_found'
           ? `“${link.label}”: a Pluggy não encontrou essa conexão. Confira o Item ID.`
-          : `“${link.label}”: não foi possível ler os dados agora. Tente de novo mais tarde.`,
+          : `“${link.label}”: não foi possível ler os dados agora${item.detail ? ` (${item.detail})` : ''}. Tente de novo mais tarde.`,
       )
       plan.links.push({ ...link, status: item.status })
       continue

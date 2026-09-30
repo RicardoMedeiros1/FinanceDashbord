@@ -48,6 +48,8 @@ export interface BankItem {
   status: string
   updatedAt: string | null
   error?: 'not_found' | 'failed'
+  /** quando falha: em que etapa e o que a Pluggy respondeu (sem dados sensíveis) */
+  detail?: string
 }
 
 export interface BankSyncResponse {
@@ -73,7 +75,9 @@ const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFi
 const MAX_PAGES = 60
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export async function handle(req: Request, env: Env, fetchFn: typeof fetch = fetch): Promise<Response> {
+export async function handle(req: Request, rawEnv: Env, fetchFn: typeof fetch = fetch): Promise<Response> {
+  // segredos colados no painel costumam vir com espaço/quebra de linha ou aspas sobrando
+  const env: Env = { get: (k) => rawEnv.get(k)?.trim().replace(/^["']|["']$/g, '') }
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS })
   if (req.method !== 'POST') return reply(405, { error: 'method' })
 
@@ -114,7 +118,6 @@ export async function handle(req: Request, env: Env, fetchFn: typeof fetch = fet
     return fail('bad_request', 'Informe o ID da conexão (Item ID) no formato correto.')
   }
   const from = typeof body.from === 'string' && DAY.test(body.from) ? body.from : new Date(Date.now() - 90 * 86400000).toISOString().slice(0, 10)
-  const to = new Date(Date.now() + 86400000).toISOString().slice(0, 10)
 
   // 3) API da Pluggy
   const base = (env.get('PLUGGY_API_URL') ?? 'https://api.pluggy.ai').replace(/\/+$/, '')
@@ -131,14 +134,25 @@ export async function handle(req: Request, env: Env, fetchFn: typeof fetch = fet
     return fail('pluggy_down', 'Não foi possível falar com a Pluggy agora. Tente de novo em instantes.')
   }
   const get = async (path: string): Promise<{ status: number; json: any }> => {
-    const r = await fetchFn(`${base}${path}`, { headers: { 'X-API-KEY': apiKey, Accept: 'application/json' } })
-    let json: any = null
-    try {
-      json = await r.json()
-    } catch {
-      /* corpo vazio */
+    for (let attempt = 0; ; attempt++) {
+      const r = await fetchFn(`${base}${path}`, { headers: { 'X-API-KEY': apiKey, Accept: 'application/json' } })
+      if (r.status === 429 && attempt < 2) {
+        await new Promise((res) => setTimeout(res, 1200 * (attempt + 1))) // limite de pedidos: espera e tenta de novo
+        continue
+      }
+      let json: any = null
+      try {
+        json = await r.json()
+      } catch {
+        /* corpo vazio */
+      }
+      return { status: r.status, json }
     }
-    return { status: r.status, json }
+  }
+  // falha com a etapa, o status e a mensagem da Pluggy (nunca inclui credenciais)
+  const must = (what: string, r: { status: number; json: any }) => {
+    if (r.status >= 400) throw new Error(`${what}: HTTP ${r.status}${r.json?.message ? ` — ${String(r.json.message).slice(0, 140)}` : ''}`)
+    return r
   }
 
   const out: BankSyncResponse = { items: [], accounts: [], transactions: [] }
@@ -149,7 +163,7 @@ export async function handle(req: Request, env: Env, fetchFn: typeof fetch = fet
         out.items.push({ id, connector: '', status: 'NOT_FOUND', updatedAt: null, error: 'not_found' })
         continue
       }
-      if (it.status >= 400) throw new Error(`item ${it.status}`)
+      must('item', it)
       out.items.push({
         id,
         connector: String(it.json?.connector?.name ?? ''),
@@ -157,8 +171,7 @@ export async function handle(req: Request, env: Env, fetchFn: typeof fetch = fet
         updatedAt: day(it.json?.lastUpdatedAt) ? String(it.json.lastUpdatedAt) : null,
       })
 
-      const acc = await get(`/accounts?itemId=${id}`)
-      if (acc.status >= 400) throw new Error(`accounts ${acc.status}`)
+      const acc = must('contas', await get(`/accounts?itemId=${id}`))
       for (const a of (acc.json?.results ?? []) as any[]) {
         const card = a.type === 'CREDIT'
         const cd = a.creditData ?? {}
@@ -177,8 +190,7 @@ export async function handle(req: Request, env: Env, fetchFn: typeof fetch = fet
         })
 
         for (let page = 1; page <= MAX_PAGES; page++) {
-          const tr = await get(`/transactions?accountId=${a.id}&from=${from}&to=${to}&pageSize=500&page=${page}`)
-          if (tr.status >= 400) throw new Error(`transactions ${tr.status}`)
+          const tr = must(`transações de "${String(a.marketingName || a.name || a.id).slice(0, 30)}"`, await get(`/transactions?accountId=${a.id}&from=${from}&pageSize=500&page=${page}`))
           for (const t of (tr.json?.results ?? []) as any[]) {
             const date = day(t.date)
             const amount = num(t.amount)
@@ -204,10 +216,11 @@ export async function handle(req: Request, env: Env, fetchFn: typeof fetch = fet
           if (page >= (num(tr.json?.totalPages) ?? 1)) break
         }
       }
-    } catch {
+    } catch (e) {
       // uma conexão com problema não derruba as outras
-      if (!out.items.some((x) => x.id === id)) out.items.push({ id, connector: '', status: 'ERROR', updatedAt: null, error: 'failed' })
-      else out.items = out.items.map((x) => (x.id === id ? { ...x, error: 'failed' as const } : x))
+      const detail = (e instanceof Error ? e.message : 'erro desconhecido').slice(0, 220)
+      if (!out.items.some((x) => x.id === id)) out.items.push({ id, connector: '', status: 'ERROR', updatedAt: null, error: 'failed', detail })
+      else out.items = out.items.map((x) => (x.id === id ? { ...x, error: 'failed' as const, detail } : x))
       out.accounts = out.accounts.filter((a) => a.itemId !== id)
       out.transactions = out.transactions.filter((t) => t.itemId !== id)
     }

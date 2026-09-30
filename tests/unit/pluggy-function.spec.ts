@@ -8,7 +8,7 @@ const BAD = '00000000-0000-4000-8000-000000000000'
 /** Servidor único que faz o papel do Supabase Auth e da API da Pluggy. */
 async function startFake() {
   const seen: Array<{ url: string; key?: string }> = []
-  const state = { authOk: true, txPages: 2 }
+  const state = { authOk: true, txPages: 2, txFail: null as null | { status: number; message: string }, rateLimit: 0 }
   const srv = http.createServer((req, res) => {
     const u = new URL(req.url ?? '/', 'http://x')
     const send = (code: number, obj: unknown) => {
@@ -39,6 +39,11 @@ async function startFake() {
         })
       }
       if (u.pathname === '/transactions') {
+        if (state.rateLimit > 0) {
+          state.rateLimit--
+          return send(429, { message: 'Too many requests' })
+        }
+        if (state.txFail) return send(state.txFail.status, { message: state.txFail.message })
         const acc = u.searchParams.get('accountId')
         const page = Number(u.searchParams.get('page'))
         const t = (id: string, type: string, amount: number, extra: Record<string, unknown> = {}) => ({ id, date: '2026-09-10T00:00:00.000Z', description: 'Padaria', descriptionRaw: null, type, amount, category: 'Eating out', status: 'POSTED', creditCardMetadata: null, ...extra })
@@ -128,6 +133,7 @@ test('sincroniza contas, cartão e transações no formato simples do app', asyn
     // usa a chave da API só do lado do servidor e o período pedido
     expect(f.seen.filter((s) => s.url.startsWith('/accounts')).every((s) => s.key === 'KEY')).toBe(true)
     expect(f.seen.some((s) => s.url.includes('from=2026-08-01') && s.url.includes('accountId=a1') && s.url.includes('pageSize=500'))).toBe(true)
+    expect(f.seen.filter((s) => s.url.startsWith('/transactions')).every((s) => !s.url.includes('to='))).toBe(true)
     expect(JSON.stringify(j)).not.toContain('sec')
     expect(JSON.stringify(j)).not.toContain('KEY')
   } finally {
@@ -141,6 +147,33 @@ test('conexão inexistente não derruba as outras', async () => {
     const j = await (await call(f.env(), { action: 'sync', items: [BAD, ITEM] })).json()
     expect(j.items.map((i: any) => [i.id, i.error ?? null])).toEqual([[BAD, 'not_found'], [ITEM, null]])
     expect(j.accounts.length).toBe(2)
+  } finally {
+    await f.close()
+  }
+})
+
+test('quando a Pluggy recusa uma etapa, o erro diz qual e por quê (sem expor credenciais)', async () => {
+  const f = await startFake()
+  try {
+    f.state.txFail = { status: 400, message: 'invalid from date' }
+    const j = await (await call(f.env(), { action: 'sync', items: [ITEM] })).json()
+    expect(j.items[0].error).toBe('failed')
+    expect(j.items[0].detail).toBe('transações de "Conta Ouro": HTTP 400 — invalid from date')
+    expect(j.accounts).toEqual([]) // nada parcial de uma conexão que falhou
+    expect(j.transactions).toEqual([])
+    expect(JSON.stringify(j)).not.toContain('sec')
+  } finally {
+    await f.close()
+  }
+})
+
+test('limite de pedidos (429) é tentado de novo, e espaços/aspas nos secrets não atrapalham', async () => {
+  const f = await startFake()
+  try {
+    f.state.rateLimit = 1
+    const j = await (await call(f.env({ PLUGGY_CLIENT_ID: ' cid\n', PLUGGY_CLIENT_SECRET: '"sec"', PLUGGY_ALLOWED_EMAILS: ' ME@x.com ' }), { action: 'sync', items: [ITEM] })).json()
+    expect(j.items[0].error).toBeUndefined()
+    expect(j.transactions.length).toBe(5)
   } finally {
     await f.close()
   }

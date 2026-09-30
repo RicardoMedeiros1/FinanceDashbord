@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { CATEGORIES, EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../categories'
 import { toISO } from '../lib'
-import type { CategoryId, Cycle, Transaction } from '../types'
+import type { Card, CategoryId, Cycle, Transaction } from '../types'
 
 interface Props {
+  cards: Card[]
   /** Presente ao editar um lançamento existente. */
   initial?: Transaction
   /** Abre já com "Repetir" marcado (ao criar uma recorrente). */
@@ -11,13 +12,14 @@ interface Props {
   onSave: (t: Omit<Transaction, 'id' | 'ruleId'>, repeat: Cycle | null) => void
 }
 
-export function TransactionForm({ initial, startRepeating, onSave }: Props) {
+export function TransactionForm({ cards, initial, startRepeating, onSave }: Props) {
   const [type, setType] = useState<Transaction['type']>(initial?.type ?? 'expense')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '')
   const [category, setCategory] = useState<CategoryId>(initial && initial.type === 'expense' ? initial.category : 'alimentacao')
   const [incomeCat, setIncomeCat] = useState<CategoryId>(initial && initial.type === 'income' ? initial.category : (startRepeating ? 'salario' : 'variavel'))
   const [date, setDate] = useState(initial?.date ?? toISO(new Date()))
+  const [cardId, setCardId] = useState(initial?.cardId ?? '')
   const [repeat, setRepeat] = useState(startRepeating ?? false)
   const [repeatTouched, setRepeatTouched] = useState(false)
   const [cycle, setCycle] = useState<Cycle>('monthly')
@@ -34,7 +36,7 @@ export function TransactionForm({ initial, startRepeating, onSave }: Props) {
         e.preventDefault()
         if (!valid) return
         onSave(
-          { description: description.trim(), amount: value, type, category: type === 'income' ? incomeCat : category, date },
+          { description: description.trim(), amount: value, type, category: type === 'income' ? incomeCat : category, date, cardId: type === 'expense' && cardId ? cardId : undefined },
           repeating && !initial ? cycle : null,
         )
       }}
@@ -82,6 +84,17 @@ export function TransactionForm({ initial, startRepeating, onSave }: Props) {
           <select value={category} onChange={(e) => setCategory(e.target.value as CategoryId)}>
             {EXPENSE_CATEGORIES.map((c) => (
               <option key={c} value={c}>{CATEGORIES[c].label}</option>
+            ))}
+          </select>
+        </label>
+      )}
+      {type === 'expense' && cards.length > 0 && (
+        <label>
+          Cartão de crédito
+          <select value={cardId} onChange={(e) => setCardId(e.target.value)}>
+            <option value="">Nenhum (dinheiro, débito ou Pix)</option>
+            {cards.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
         </label>

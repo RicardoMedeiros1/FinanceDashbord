@@ -17,13 +17,15 @@ import { Budgets } from './pages/Budgets'
 import { Overview } from './pages/Overview'
 import { Subscriptions, type SubsTab } from './pages/Subscriptions'
 import { Transactions, type TxView } from './pages/Transactions'
-import type { Budget, CategoryId, Cycle, Goal, Installment, Page, Recurring, Subscription, Transaction } from './types'
+import { Cards } from './pages/Cards'
+import type { Budget, Card, CategoryId, Cycle, Goal, Installment, Page, Recurring, Subscription, Transaction } from './types'
 import { useStored } from './useStored'
 
 const TITLES: Record<Page, { title: string; subtitle: string }> = {
   overview: { title: 'Visão geral', subtitle: 'Como está o seu dinheiro este mês' },
   transactions: { title: 'Transações', subtitle: 'Todas as receitas e despesas' },
   subscriptions: { title: 'Assinaturas e parcelas', subtitle: 'O que renova no cartão e o que você ainda está pagando' },
+  cards: { title: 'Cartões', subtitle: 'Fechamento, vencimento e fatura de cada cartão' },
   budgets: { title: 'Orçamentos', subtitle: 'Limites de gasto por categoria' },
   assistant: { title: 'Assistente', subtitle: 'Tire dúvidas sobre o seu dinheiro' },
 }
@@ -70,12 +72,13 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
   const [installments, setInstallments] = useStored<Installment[]>('fd:installments', none)
   const [rules, setRules] = useStored<Recurring[]>('fd:rules', none)
   const [receipts, setReceipts] = useStored<ReceiptMeta[]>('fd:receipts', none)
+  const [cards, setCards] = useStored<Card[]>('fd:cards', none)
   const [form, setForm] = useState<{ tx?: Transaction; repeat?: boolean } | null>(null)
   const [dataOpen, setDataOpen] = useState(false)
   const [tick, setTick] = useState(0)
 
   // ---------- sincronização com a nuvem ----------
-  const data: Collections = { txs, subs, budgets, goals, installments, rules, receipts }
+  const data: Collections = { txs, subs, budgets, goals, installments, rules, receipts, cards }
   const dataRef = useRef<Collections>(data)
   // espelho síncrono do estado (o motor de sync lê daqui); `apply` também o atualiza na hora
   useLayoutEffect(() => {
@@ -90,6 +93,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     installments: setInstallments as never,
     rules: setRules as never,
     receipts: setReceipts as never,
+    cards: setCards as never,
   }
   const settersRef = useRef(setters) // os setters do React são estáveis
 
@@ -139,7 +143,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
   // toda mudança local agenda um envio
   useEffect(() => {
     engineRef.current?.schedule()
-  }, [txs, subs, budgets, goals, installments, rules, receipts])
+  }, [txs, subs, budgets, goals, installments, rules, receipts, cards])
 
   // ---------- comprovantes ----------
   const store = useMemo(() => (cloud && remote ? cloudReceiptStore(remote, cloud.userId) : localReceiptStore()), [cloud, remote])
@@ -215,7 +219,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
       const id = form.tx.id
       setTxs((l) => l.map((x) => (x.id === id ? { ...x, ...t } : x)))
     } else if (repeat) {
-      setRules((l) => [...l, { id: uid(), description: t.description, amount: t.amount, type: t.type, category: t.category, cycle: repeat, anchor: t.date, generated: 0, active: true }])
+      setRules((l) => [...l, { id: uid(), description: t.description, amount: t.amount, type: t.type, category: t.category, cycle: repeat, anchor: t.date, generated: 0, active: true, cardId: t.cardId }])
     } else {
       setTxs((l) => [{ ...t, id: uid() }, ...l])
     }
@@ -231,6 +235,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
   const clearAll = () => {
     for (const r of receipts) void storeFor(r).remove(r).catch(() => undefined)
     setReceipts([])
+    setCards([])
     setInstallments([])
     setRules([])
     setTxs([])
@@ -238,6 +243,20 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     setBudgets([])
     setGoals([])
   }
+
+  const saveCard = (c: Omit<Card, 'id' | 'paid'>, id?: string) =>
+    setCards((l) => (id ? l.map((x) => (x.id === id ? { ...x, ...c } : x)) : [...l, { ...c, id: uid() }]))
+  const deleteCard = (id: string) => {
+    // as compras ficam, só deixam de estar ligadas ao cartão
+    const unlink = <T extends { cardId?: string }>(l: T[]) => l.map((x) => (x.cardId === id ? { ...x, cardId: undefined } : x))
+    setTxs(unlink)
+    setSubs(unlink)
+    setInstallments(unlink)
+    setRules(unlink)
+    setCards((l) => l.filter((c) => c.id !== id))
+  }
+  const toggleInvoicePaid = (cardId: string, key: string) =>
+    setCards((l) => l.map((c) => (c.id === cardId ? { ...c, paid: c.paid?.includes(key) ? c.paid.filter((k) => k !== key) : [...(c.paid ?? []), key] } : c)))
 
   const signOut = async () => {
     if (!cloud) return
@@ -271,6 +290,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
         {page === 'overview' && (
           <Overview
             installments={installments}
+            cards={cards}
             txs={txs}
             subs={subs}
             budgets={budgets}
@@ -282,6 +302,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
         )}
         {page === 'transactions' && (
           <Transactions
+            cards={cards}
             txs={txs}
             rules={rules}
             receiptIds={receiptIds}
@@ -297,6 +318,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
         )}
         {page === 'subscriptions' && (
           <Subscriptions
+            cards={cards}
             tab={(sub === 'installments' ? 'installments' : 'subs') satisfies SubsTab}
             onTab={(t) => go('subscriptions', t === 'installments' ? 'installments' : '')}
             installments={installments}
@@ -322,6 +344,18 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             onDelete={(id) => setSubs((l) => l.filter((s) => s.id !== id))}
           />
         )}
+        {page === 'cards' && (
+          <Cards
+            cards={cards}
+            txs={txs}
+            sub={sub}
+            onOpen={(id) => go('cards', id)}
+            onBack={() => go('cards')}
+            onSave={saveCard}
+            onDelete={deleteCard}
+            onTogglePaid={toggleInvoicePaid}
+          />
+        )}
         {page === 'budgets' && (
           <Budgets
             txs={txs}
@@ -332,7 +366,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             }
           />
         )}
-        {page === 'assistant' && <Assistant txs={txs} subs={subs} budgets={budgets} installments={installments} />}
+        {page === 'assistant' && <Assistant txs={txs} subs={subs} budgets={budgets} installments={installments} cards={cards} />}
       </main>
 
       {gate === 'ask' && (
@@ -359,7 +393,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
       {dataOpen && (
         <DataModal
           cloud={cloud ? { email: cloud.email, onSignOut: () => void signOut() } : undefined}
-          data={{ txs, subs, budgets, goals, recurring: rules, installments }}
+          data={{ txs, subs, budgets, goals, recurring: rules, installments, cards }}
           onClose={() => setDataOpen(false)}
           onImport={(d) => {
             setTxs(d.txs)
@@ -368,9 +402,11 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             setGoals(d.goals)
             setRules(d.recurring)
             setInstallments(d.installments)
+            setCards(d.cards)
           }}
           onClear={clearAll}
           onReset={() => {
+            setCards([])
             setInstallments([])
             setRules([])
             setTxs(seedTransactions())
@@ -382,7 +418,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
       )}
       {form && (
         <Modal title={form.tx ? 'Editar transação' : form.repeat ? 'Nova recorrente' : 'Nova transação'} onClose={() => setForm(null)}>
-          <TransactionForm initial={form.tx} startRepeating={form.repeat} onSave={saveForm} />
+          <TransactionForm cards={cards} initial={form.tx} startRepeating={form.repeat} onSave={saveForm} />
         </Modal>
       )}
       {detailItem && (

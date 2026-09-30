@@ -1,6 +1,6 @@
 import { Download, LogOut, RotateCcw, Trash2, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
-import type { Budget, Goal, Installment, Recurring, Subscription, Transaction } from '../types'
+import type { Budget, Card, Goal, Installment, Recurring, Subscription, Transaction } from '../types'
 import { Modal } from './Modal'
 
 export interface AppData {
@@ -10,6 +10,7 @@ export interface AppData {
   goals: Goal[]
   recurring: Recurring[]
   installments: Installment[]
+  cards: Card[]
 }
 
 export interface CloudInfo {
@@ -31,7 +32,7 @@ function parse(text: string): AppData {
   const raw = JSON.parse(text)
   const ok = (k: string) => Array.isArray(raw?.[k])
   if (!ok('txs') || !ok('subs') || !ok('budgets')) throw new Error('formato')
-  return { txs: raw.txs, subs: raw.subs, budgets: raw.budgets, goals: Array.isArray(raw.goals) ? raw.goals : [], recurring: Array.isArray(raw.recurring) ? raw.recurring : [], installments: Array.isArray(raw.installments) ? raw.installments : [] }
+  return { txs: raw.txs, subs: raw.subs, budgets: raw.budgets, goals: Array.isArray(raw.goals) ? raw.goals : [], recurring: Array.isArray(raw.recurring) ? raw.recurring : [], installments: Array.isArray(raw.installments) ? raw.installments : [], cards: Array.isArray(raw.cards) ? raw.cards : [] }
 }
 
 export function DataModal({ cloud, data, onImport, onReset, onClear, onClose }: Props) {

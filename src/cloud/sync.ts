@@ -1,6 +1,6 @@
 import type { Remote, Row } from './types'
 
-export const COLS = ['txs', 'subs', 'budgets', 'goals', 'installments', 'rules', 'receipts'] as const
+export const COLS = ['txs', 'subs', 'budgets', 'goals', 'installments', 'rules', 'receipts', 'cards'] as const
 export type Col = (typeof COLS)[number]
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Item = any
@@ -34,7 +34,7 @@ function stable(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(stable).join(',')}]`
   if (v && typeof v === 'object') {
     const o = v as Record<string, unknown>
-    return `{${Object.keys(o).sort().map((k) => `${JSON.stringify(k)}:${stable(o[k])}`).join(',')}}`
+    return `{${Object.keys(o).filter((k) => o[k] !== undefined).sort().map((k) => `${JSON.stringify(k)}:${stable(o[k])}`).join(',')}}`
   }
   return JSON.stringify(v) ?? 'null'
 }

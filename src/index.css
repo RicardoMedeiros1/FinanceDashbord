@@ -400,3 +400,17 @@ main > .tabs { align-self: flex-start; }
 .receipt-actions a { text-decoration: none; }
 .backfill { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; background: var(--accent-soft); border: 1px solid rgba(224, 96, 15, 0.4); border-radius: 12px; padding: 10px 12px; margin-bottom: 12px; font-size: 13px; }
 .form .hint { margin: -6px 0 0; line-height: 1.4; }
+
+/* cartões */
+.grid.cardgrid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.cc { display: flex; flex-direction: column; gap: 14px; border-top: 3px solid var(--c); }
+.cc-alert { background: rgba(224, 163, 15, 0.12); border: 1px solid rgba(224, 163, 15, 0.4); color: #f3d38a; border-radius: 10px; padding: 8px 10px; font-size: 13px; }
+.detail-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.detail-head h3 { font-size: 20px; }
+.invoices { display: flex; flex-direction: column; gap: 10px; }
+.invoice { padding: 0; }
+.invoice-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 18px; background: none; border: 0; text-align: left; color: inherit; flex-wrap: wrap; }
+.invoice-body { padding: 0 18px 16px; display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.invoice-body .list { width: 100%; }
+.pill.warn { background: rgba(224, 163, 15, 0.16); color: var(--amber); }
+.card-tag { margin-left: 8px; }

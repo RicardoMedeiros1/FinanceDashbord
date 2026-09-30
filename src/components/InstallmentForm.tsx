@@ -1,17 +1,18 @@
 import { useState } from 'react'
 import { CATEGORIES, EXPENSE_CATEGORIES } from '../categories'
 import { brl, installmentStatus, monthLong, occurrence, toISO } from '../lib'
-import type { CategoryId, Installment } from '../types'
+import type { Card, CategoryId, Installment } from '../types'
 
 const COLORS = ['#e0600f', '#3b6ef5', '#8b3ff5', '#e84a45', '#3ecf6e', '#f472b6', '#22d3ee', '#94a3b8']
 
 interface Props {
+  cards: Card[]
   initial?: Installment
   /** includePast: lançar como despesa as parcelas que já venceram (só ao criar). */
   onSave: (i: Omit<Installment, 'id' | 'generated'>, includePast: boolean) => void
 }
 
-export function InstallmentForm({ initial, onSave }: Props) {
+export function InstallmentForm({ cards, initial, onSave }: Props) {
   const [name, setName] = useState(initial?.name ?? '')
   const [lender, setLender] = useState(initial?.lender ?? '')
   const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '')
@@ -22,6 +23,7 @@ export function InstallmentForm({ initial, onSave }: Props) {
   const [category, setCategory] = useState<CategoryId>(initial?.category ?? 'compras')
   const [color, setColor] = useState(initial?.color ?? COLORS[0])
   const [includePast, setIncludePast] = useState(true)
+  const [cardId, setCardId] = useState(initial?.cardId ?? '')
 
   const value = Number(amount.replace(',', '.'))
   const n = Math.floor(Number(count))
@@ -44,7 +46,7 @@ export function InstallmentForm({ initial, onSave }: Props) {
       className="form"
       onSubmit={(e) => {
         e.preventDefault()
-        if (valid) onSave({ name: name.trim(), lender: lender.trim(), amount: value, count: n, purchaseDate, firstDate, color, category }, includePast)
+        if (valid) onSave({ name: name.trim(), lender: lender.trim(), amount: value, count: n, purchaseDate, firstDate, color, category, cardId: cardId || undefined }, includePast)
       }}
     >
       <label>
@@ -83,6 +85,17 @@ export function InstallmentForm({ initial, onSave }: Props) {
           ))}
         </select>
       </label>
+      {cards.length > 0 && (
+        <label>
+          Cartão próprio em que foi parcelado
+          <select value={cardId} onChange={(e) => setCardId(e.target.value)}>
+            <option value="">Nenhum (cartão de terceiros, carnê ou boleto)</option>
+            {cards.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </label>
+      )}
       <div className="swatches">
         {COLORS.map((c) => (
           <button type="button" key={c} className={`swatch ${c === color ? 'on' : ''}`} style={{ background: c }} onClick={() => setColor(c)} aria-label={`Cor ${c}`} />

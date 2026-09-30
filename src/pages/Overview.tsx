@@ -8,7 +8,8 @@ import { Money } from '../components/Money'
 import { StatCard } from '../components/StatCard'
 import { buildInsights } from '../insights'
 import { brl, brlShort, daysUntil, formatDate, installmentStatus, parseISO, inMonth, monthKey, monthLabel, monthlyCost, nextCharge, shiftMonth, sumBy, toISO } from '../lib'
-import type { Budget, Goal, Installment, Page, Subscription, Transaction } from '../types'
+import { nextInvoiceToPay } from '../cards'
+import type { Budget, Card, Goal, Installment, Page, Subscription, Transaction } from '../types'
 
 const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null)
 
@@ -18,6 +19,7 @@ interface Props {
   txs: Transaction[]
   subs: Subscription[]
   installments: Installment[]
+  cards: Card[]
   budgets: Budget[]
   goals: Goal[]
   onNavigate: (p: Page) => void
@@ -25,7 +27,7 @@ interface Props {
   onDeposit: (id: string, amount: number) => void
 }
 
-export function Overview({ txs, subs, installments, budgets, goals, onNavigate, onAddGoal, onDeposit }: Props) {
+export function Overview({ txs, subs, installments, cards, budgets, goals, onNavigate, onAddGoal, onDeposit }: Props) {
   const [range, setRange] = useState<'30d' | '6m'>('30d')
 
   const months = useMemo(
@@ -64,13 +66,17 @@ export function Overview({ txs, subs, installments, budgets, goals, onNavigate, 
     [txs],
   )
 
-  const insights = useMemo(() => buildInsights(txs, subs, budgets, installments), [txs, subs, budgets, installments])
+  const insights = useMemo(() => buildInsights(txs, subs, budgets, installments, cards), [txs, subs, budgets, installments, cards])
 
   const upcoming = [
     ...activeSubs.map((x) => ({ id: x.id, name: x.name, color: x.color, date: nextCharge(x), price: x.price, note: '' })),
     ...installments.flatMap((x) => {
       const st = installmentStatus(x)
       return st.next ? [{ id: x.id, name: x.name, color: x.color, date: parseISO(st.next), price: x.amount, note: `parcela ${st.paid + 1}/${x.count}` }] : []
+    }),
+    ...cards.flatMap((c) => {
+      const inv = nextInvoiceToPay(c, txs)
+      return inv.total > 0 ? [{ id: `card-${c.id}`, name: `Fatura ${c.name}`, color: c.color, date: parseISO(inv.due), price: inv.total, note: inv.status === 'open' ? 'em aberto' : 'fechada' }] : []
     }),
   ]
     .sort((a, b) => a.date.getTime() - b.date.getTime())

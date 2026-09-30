@@ -21,6 +21,7 @@ export interface Transaction {
   category: CategoryId
   date: string // yyyy-mm-dd
   ruleId?: string // definido quando foi gerada por uma recorrência
+  cardId?: string // cartão de crédito usado (a compra entra na fatura dele)
 }
 
 export interface Subscription {
@@ -33,6 +34,7 @@ export interface Subscription {
   active: boolean
   category?: CategoryId // categoria da despesa gerada (padrão: assinaturas)
   chargedUntil?: string // cobranças até esta data já foram processadas (yyyy-mm-dd)
+  cardId?: string // cartão em que a assinatura é cobrada
 }
 
 export interface Budget {
@@ -40,7 +42,7 @@ export interface Budget {
   limit: number
 }
 
-export type Page = 'overview' | 'transactions' | 'subscriptions' | 'budgets' | 'assistant'
+export type Page = 'overview' | 'transactions' | 'subscriptions' | 'cards' | 'budgets' | 'assistant'
 
 export interface Goal {
   id: string
@@ -63,6 +65,7 @@ export interface Recurring {
   anchor: string // yyyy-mm-dd da primeira ocorrência
   generated: number // quantas ocorrências já viraram lançamento
   active: boolean
+  cardId?: string
 }
 
 /** Compra parcelada / dívida com terceiros. */
@@ -77,4 +80,16 @@ export interface Installment {
   color: string
   category?: CategoryId // categoria das despesas geradas (padrão: compras)
   generated?: number // quantas parcelas já viraram despesa
+  cardId?: string // cartão PRÓPRIO em que a compra foi parcelada (deixe vazio se for cartão de terceiros)
+}
+
+/** Cartão de crédito: as compras entram na fatura conforme o dia de fechamento. */
+export interface Card {
+  id: string
+  name: string
+  closingDay: number // 1–31 (em meses curtos vale o último dia)
+  dueDay: number // 1–31
+  limit?: number
+  color: string
+  paid?: string[] // faturas marcadas como pagas (chave = mês do fechamento, yyyy-mm)
 }

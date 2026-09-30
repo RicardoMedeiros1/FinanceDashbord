@@ -3,13 +3,14 @@ import { useMemo, useState } from 'react'
 import { CATEGORIES } from '../categories'
 import { Tabs } from '../components/Tabs'
 import { brl, CYCLE_LABEL, formatDate, monthKey, monthLong, nextOccurrence, sumBy } from '../lib'
-import type { Recurring, Transaction } from '../types'
+import type { Card, Recurring, Transaction } from '../types'
 
 type Filter = 'all' | 'income' | 'expense'
 
 export type TxView = 'list' | 'recurring'
 
 interface Props {
+  cards: Card[]
   receiptIds: Set<string>
   onOpenReceipt: (id: string) => void
   view: TxView
@@ -25,7 +26,7 @@ interface Props {
 
 const tagStyle = (color: string) => ({ '--c': color }) as React.CSSProperties
 
-export function Transactions({ receiptIds, onOpenReceipt, view, onView, txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
+export function Transactions({ cards, receiptIds, onOpenReceipt, view, onView, txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [month, setMonth] = useState(monthKey(new Date()))
@@ -100,6 +101,9 @@ export function Transactions({ receiptIds, onOpenReceipt, view, onView, txs, rul
                   <tr key={t.id}>
                     <td>
                       {t.description}
+                      {t.cardId && cards.find((c) => c.id === t.cardId) && (
+                        <span className="tag card-tag" style={tagStyle(cards.find((c) => c.id === t.cardId)!.color)}>{cards.find((c) => c.id === t.cardId)!.name}</span>
+                      )}
                       {receiptIds.has(t.id) && (
                         <button className="rec-btn" onClick={() => onOpenReceipt(t.id)} aria-label={`Ver comprovante de ${t.description}`}><Paperclip size={13} /></button>
                       )}

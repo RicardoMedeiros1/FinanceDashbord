@@ -1,6 +1,7 @@
 import { CATEGORIES } from './categories'
-import { brl, daysUntil, inMonth, installmentStatus, monthKey, monthLong, monthlyCost, nextCharge, parseISO, shiftMonth, sumBy } from './lib'
-import type { Budget, CategoryId, Installment, Subscription, Transaction } from './types'
+import { brl, daysUntil, formatDate, inMonth, installmentStatus, monthKey, monthLong, monthlyCost, nextCharge, parseISO, shiftMonth, sumBy } from './lib'
+import { cardInvoices, cardSummary } from './cards'
+import type { Budget, Card, CategoryId, Installment, Subscription, Transaction } from './types'
 
 export interface Insight {
   id: string
@@ -27,6 +28,7 @@ export function buildInsights(
   subs: Subscription[],
   budgets: Budget[],
   installments: Installment[] = [],
+  cards: Card[] = [],
 ): Insight[] {
   const now = new Date()
   const cur = monthKey(now)
@@ -129,6 +131,27 @@ export function buildInsights(
     })
   }
 
+  // Cartões: fechamento e vencimento chegando
+  for (const c of cards) {
+    const s = cardSummary(c, txs)
+    if (s.open.total > 0 && s.daysToClose <= 5) {
+      out.push({
+        id: `card-close-${c.id}`,
+        tone: 'info',
+        title: `Fatura ${c.name} fecha ${s.daysToClose === 0 ? 'hoje' : `em ${s.daysToClose} ${s.daysToClose === 1 ? 'dia' : 'dias'}`}`,
+        text: `Já são ${brl(s.open.total)} nesta fatura. Compras depois de ${formatDate(s.open.closing)} entram só na próxima.`,
+      })
+    }
+    if (s.closed) {
+      const d = daysUntil(parseISO(s.closed.due))
+      if (d <= 5) out.push({ id: `card-due-${c.id}`, tone: 'warn', title: `Fatura ${c.name} vence ${d === 0 ? 'hoje' : `em ${d} ${d === 1 ? 'dia' : 'dias'}`}`, text: `${brl(s.closed.total)} a pagar. Depois de pagar, marque como paga em Cartões.` })
+    }
+    const recentOverdue = cardInvoices(c, txs).find((i) => i.status === 'overdue' && i.total > 0 && daysUntil(parseISO(i.due)) >= -20)
+    if (recentOverdue) {
+      out.push({ id: `card-late-${c.id}`, tone: 'warn', title: `Fatura ${c.name} vencida em ${formatDate(recentOverdue.due)}`, text: `${brl(recentOverdue.total)}. Se já pagou, marque como paga em Cartões.` })
+    }
+  }
+
   const soon = [
     ...active.map((s) => ({ name: s.name, price: s.price, d: daysUntil(nextCharge(s)) })),
     ...open.map((x) => ({ name: x.i.name, price: x.i.amount, d: daysUntil(parseISO(x.st.next!)) })),
@@ -187,10 +210,11 @@ export const SUGGESTIONS = [
   'Como estão meus orçamentos?',
   'Como economizar mais?',
   'Quanto ainda devo em parcelas?',
+  'Quando fecham as faturas dos meus cartões?',
 ]
 
 /** Assistente local: responde por palavras-chave usando os seus dados (não é um LLM). */
-export function answer(question: string, txs: Transaction[], subs: Subscription[], budgets: Budget[], installments: Installment[] = []): string {
+export function answer(question: string, txs: Transaction[], subs: Subscription[], budgets: Budget[], installments: Installment[] = [], cards: Card[] = []): string {
   const q = norm(question)
   const cur = monthKey(new Date())
   const list = txs.filter((t) => inMonth(t, cur))
@@ -198,6 +222,19 @@ export function answer(question: string, txs: Transaction[], subs: Subscription[
   const expense = sumBy(list, 'expense')
   const byCat = [...spendByCategory(list)].sort((a, b) => b[1] - a[1])
 
+  if (/cartao|cartoes|fatura|fecha|limite disponivel/.test(q)) {
+    if (!cards.length) return 'Você ainda não cadastrou cartões. Cadastre em Cartões, com o dia de fechamento e de vencimento.'
+    return cards
+      .map((c) => {
+        const s = cardSummary(c, txs)
+        const parts = [`• ${c.name}: fatura atual ${brl(s.open.total)}, fecha ${s.daysToClose === 0 ? 'hoje' : `em ${s.daysToClose} ${s.daysToClose === 1 ? 'dia' : 'dias'}`} (${formatDate(s.open.closing)}), vence ${formatDate(s.open.due)}`]
+        if (s.closed) parts.push(`  fechada a pagar: ${brl(s.closed.total)}, vence ${formatDate(s.closed.due)}`)
+        if (c.limit) parts.push(`  limite disponível: ${brl(Math.max(0, c.limit - s.used))}`)
+        parts.push(`  melhor dia de compra: dia ${s.bestDay}`)
+        return parts.join('\n')
+      })
+      .join('\n')
+  }
   if (/parcela|divida|devo|emprest|financ/.test(q)) {
     const open = installments.map((i) => ({ i, st: installmentStatus(i) })).filter((x) => x.st.remaining > 0)
     if (!open.length) return 'Você não tem parcelas em aberto. 🎉'

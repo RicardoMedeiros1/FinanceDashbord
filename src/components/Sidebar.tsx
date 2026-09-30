@@ -1,10 +1,11 @@
-import { Bot, CreditCard, LayoutDashboard, PiggyBank, Receipt } from 'lucide-react'
+import { Bot, CreditCard, LayoutDashboard, PiggyBank, Receipt, Wallet } from 'lucide-react'
 import type { Page } from '../types'
 
 const ITEMS: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'overview', label: 'Visão geral', icon: LayoutDashboard },
   { id: 'transactions', label: 'Transações', icon: Receipt },
   { id: 'subscriptions', label: 'Assinaturas', icon: CreditCard },
+  { id: 'cards', label: 'Cartões', icon: Wallet },
   { id: 'budgets', label: 'Orçamentos', icon: PiggyBank },
   { id: 'assistant', label: 'Assistente', icon: Bot },
 ]

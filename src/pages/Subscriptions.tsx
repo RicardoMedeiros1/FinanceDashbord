@@ -7,11 +7,12 @@ import { Tabs } from '../components/Tabs'
 import { Installments } from './Installments'
 import { CATEGORIES } from '../categories'
 import { brl, daysUntil, formatDate, monthlyCost, nextCharge, toISO } from '../lib'
-import type { Installment, Subscription } from '../types'
+import type { Card, Installment, Subscription } from '../types'
 
 export type SubsTab = 'subs' | 'installments'
 
 interface Props {
+  cards: Card[]
   receiptCount: (installmentId: string) => number
   onDetails: (i: Installment) => void
   tab: SubsTab
@@ -25,7 +26,7 @@ interface Props {
   onDelete: (id: string) => void
 }
 
-export function Subscriptions({ receiptCount, onDetails, tab, onTab, subs, onSave, onToggle, onDelete, installments, onSaveInstallment, onDeleteInstallment }: Props) {
+export function Subscriptions({ cards, receiptCount, onDetails, tab, onTab, subs, onSave, onToggle, onDelete, installments, onSaveInstallment, onDeleteInstallment }: Props) {
   const [subForm, setSubForm] = useState<{ item?: Subscription } | null>(null)
   const [instForm, setInstForm] = useState<{ item?: Installment } | null>(null)
   const active = subs.filter((s) => s.active)
@@ -58,6 +59,7 @@ export function Subscriptions({ receiptCount, onDetails, tab, onTab, subs, onSav
         {instForm && (
           <Modal title={instForm.item ? 'Editar parcela' : 'Nova parcela'} onClose={() => setInstForm(null)}>
             <InstallmentForm
+              cards={cards}
               initial={instForm.item}
               onSave={(i, includePast) => {
                 onSaveInstallment(i, includePast, instForm.item?.id)
@@ -127,6 +129,7 @@ export function Subscriptions({ receiptCount, onDetails, tab, onTab, subs, onSav
       {subForm && (
         <Modal title={subForm.item ? 'Editar assinatura' : 'Nova assinatura'} onClose={() => setSubForm(null)}>
           <SubscriptionForm
+            cards={cards}
             initial={subForm.item}
             onSave={(sub, includeLast) => {
               onSave(sub, includeLast, subForm.item?.id)

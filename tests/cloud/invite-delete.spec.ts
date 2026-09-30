@@ -65,3 +65,13 @@ test('excluir a conta apaga tudo e exige confirmação digitada', async ({ brows
   await p.click('button:has-text("Entrar")')
   await expect(p.getByRole('alert')).toContainText('E-mail ou senha incorretos')
 })
+
+test('na tela de nova senha dá para cancelar e sair', async ({ browser, baseURL }) => {
+  const { p } = await device(browser, baseURL)
+  await p.goto('./#type=recovery&rt=abc')
+  await expect(p.getByRole('heading', { name: 'Nova senha' })).toBeVisible()
+  await p.getByRole('button', { name: 'Cancelar e sair' }).click()
+  await expect(p.locator('input[type=email]')).toBeVisible()
+  await p.reload()
+  await expect(p.locator('input[type=email]')).toBeVisible() // continua deslogado
+})

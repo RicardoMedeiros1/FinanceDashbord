@@ -338,8 +338,12 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     Object.keys(localStorage)
       .filter((k) => k.startsWith('fd:'))
       .forEach((k) => localStorage.removeItem(k))
-    await cloud.auth.signOut()
-    window.location.reload()
+    try {
+      await cloud.auth.signOut()
+    } finally {
+      window.location.hash = ''
+      window.location.reload()
+    }
   }
 
   const head = TITLES[page]

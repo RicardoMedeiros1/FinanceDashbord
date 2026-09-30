@@ -38,6 +38,7 @@ export function AuthGate({ auth, children }: Props) {
             {recovery === 'invite' ? `Você foi convidado. Defina a senha da sua conta (${session.email}).` : `Escolha a nova senha da sua conta (${session.email}).`}
           </p>
           <PasswordForm submitLabel={recovery === 'invite' ? 'Definir senha e entrar' : 'Salvar e entrar'} onSubmit={(pw) => auth.updatePassword(pw)} onDone={() => setRecovery(null)} />
+          <button type="button" className="link center" onClick={() => { setRecovery(null); void auth.signOut().then(() => setSession(null)) }}>Cancelar e sair</button>
         </div>
       </div>
     )

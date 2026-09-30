@@ -97,7 +97,9 @@ export function createSupabaseAuth(url: string, key: string): Auth {
       if (error) throw new Error(friendlyAuthError(error))
     },
     async signOut() {
-      await client.auth.signOut()
+      // 'local' encerra só este aparelho e não depende de rede; se falhar, limpamos a sessão salva à mão
+      const { error } = await client.auth.signOut({ scope: 'local' })
+      if (error) Object.keys(localStorage).filter((k) => k.startsWith('sb-')).forEach((k) => localStorage.removeItem(k))
     },
     async resetPassword(email) {
       const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo })

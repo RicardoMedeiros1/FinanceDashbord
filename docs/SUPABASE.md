@@ -75,6 +75,26 @@ Se o link mostrar "expirou ou já foi usado", peça outro: cada link vale uma ve
 
 Dentro do app, **Dados → Trocar senha** também funciona (mínimo de 8 caracteres).
 
+## 8. Convidar outras pessoas
+
+O cadastro público continua **desligado** (só entra quem você convidar):
+
+1. **Authentication → Users → Invite user**, digite o e-mail da pessoa.
+2. Ela recebe um e-mail; ao clicar, o app abre em **Bem-vindo ao Finn** pedindo para **definir a senha** e já entra.
+3. Cada pessoa tem uma conta separada: as regras de segurança (RLS) garantem que ninguém enxerga os dados de outra.
+4. Para o link voltar ao app (e não a `localhost`), a **Site URL** e as **Redirect URLs** do passo 7 precisam estar certas.
+5. O e-mail padrão do Supabase tem limites baixos; para mais de algumas pessoas, configure um SMTP próprio (passo 7).
+
+No primeiro acesso a pessoa vê um passo a passo (nome, contas, cartões, salário e primeira despesa). A página **Privacidade e termos de uso** fica em `#/privacy` (link na tela de login e em **Dados**); revise o texto em `src/pages/Privacy.tsx` e coloque o seu contato antes de convidar terceiros.
+
+## 9. Excluir a própria conta
+
+**Dados → Excluir minha conta** (confirmação digitando EXCLUIR) apaga comprovantes, registros e o usuário, em todos os aparelhos. Isso depende da função `delete_my_account()`, que já está no final de `supabase/schema.sql`: **se você criou o banco antes, rode o `schema.sql` de novo** no SQL Editor (é seguro repetir).
+
+## Modo privacidade
+
+O ícone de olho no topo esconde todos os valores em dinheiro na tela (útil em público). A escolha fica salva no aparelho.
+
 ## Como conferir se está tudo certo
 
 1. Entrar com senha errada mostra "E-mail ou senha incorretos".

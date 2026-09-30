@@ -1,4 +1,4 @@
-import { Download, KeyRound, LogOut, RotateCcw, Trash2, Upload } from 'lucide-react'
+import { Download, KeyRound, LogOut, RotateCcw, Trash2, UserX, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { Account, Budget, Card, Goal, Installment, Recurring, Subscription, Transaction, Transfer } from '../types'
 import { PasswordForm } from '../cloud/PasswordForm'
@@ -20,6 +20,7 @@ export interface CloudInfo {
   email: string
   onSignOut: () => void
   onChangePassword: (password: string) => Promise<void>
+  onDeleteAccount: () => Promise<void>
 }
 
 interface Props {
@@ -46,6 +47,10 @@ export function DataModal({ profileName, onProfileName, cloud, data, onImport, o
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [name, setName] = useState(profileName)
   const [pwOpen, setPwOpen] = useState(false)
+  const [delOpen, setDelOpen] = useState(false)
+  const [delText, setDelText] = useState('')
+  const [delBusy, setDelBusy] = useState(false)
+  const [delError, setDelError] = useState('')
 
   const exportFile = () => {
     const blob = new Blob([JSON.stringify({ version: 1, ...data }, null, 2)], { type: 'application/json' })
@@ -126,6 +131,10 @@ export function DataModal({ profileName, onProfileName, cloud, data, onImport, o
         {cloud && (
           <button className="btn ghost" onClick={cloud.onSignOut}><LogOut size={16} /> Sair desta conta</button>
         )}
+        {cloud && (
+          <button className="btn danger" onClick={() => setDelOpen(true)}><UserX size={16} /> Excluir minha conta</button>
+        )}
+        <a className="link small" href="#/privacy">Privacidade e termos de uso</a>
       </div>
       <input
         ref={file}
@@ -149,6 +158,34 @@ export function DataModal({ profileName, onProfileName, cloud, data, onImport, o
               setMsg({ ok: true, text: 'Senha alterada.' })
             }}
           />
+        </Modal>
+      )}
+      {delOpen && cloud && (
+        <Modal title="Excluir minha conta" onClose={() => setDelOpen(false)}>
+          <form
+            className="form"
+            onSubmit={async (e) => {
+              e.preventDefault()
+              if (delText !== 'EXCLUIR') return
+              setDelBusy(true)
+              setDelError('')
+              try {
+                await cloud.onDeleteAccount()
+              } catch (err) {
+                setDelError(err instanceof Error ? err.message : 'Não foi possível excluir a conta.')
+                setDelBusy(false)
+              }
+            }}
+          >
+            <p>Isso apaga <strong>definitivamente</strong> a sua conta ({cloud.email}), todos os lançamentos, contas, cartões e os comprovantes anexados, em todos os aparelhos. Não dá para desfazer.</p>
+            <p className="muted small">Se quiser guardar uma cópia, exporte um backup antes. Comprovantes não entram no backup.</p>
+            <label>
+              Digite EXCLUIR para confirmar
+              <input value={delText} onChange={(e) => setDelText(e.target.value)} autoComplete="off" autoFocus />
+            </label>
+            {delError && <p className="bad-text small" role="alert">{delError}</p>}
+            <button className="btn danger" disabled={delText !== 'EXCLUIR' || delBusy}>{delBusy ? 'Excluindo…' : 'Excluir minha conta para sempre'}</button>
+          </form>
         </Modal>
       )}
     </Modal>

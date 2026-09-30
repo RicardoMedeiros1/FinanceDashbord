@@ -11,11 +11,13 @@ interface Props {
   initial?: Transaction
   /** Abre já com "Repetir" marcado (ao criar uma recorrente). */
   startRepeating?: boolean
+  /** Abre já como receita (ex.: cadastrar o salário). */
+  startIncome?: boolean
   onSave: (t: Omit<Transaction, 'id' | 'ruleId'>, repeat: Cycle | null) => void
 }
 
-export function TransactionForm({ cards, accounts, initial, startRepeating, onSave }: Props) {
-  const [type, setType] = useState<Transaction['type']>(initial?.type ?? 'expense')
+export function TransactionForm({ cards, accounts, initial, startRepeating, startIncome, onSave }: Props) {
+  const [type, setType] = useState<Transaction['type']>(initial?.type ?? (startIncome ? 'income' : 'expense'))
   const [description, setDescription] = useState(initial?.description ?? '')
   const [amount, setAmount] = useState(initial ? String(initial.amount).replace('.', ',') : '')
   const [category, setCategory] = useState<CategoryId>(initial && initial.type === 'expense' ? initial.category : 'alimentacao')

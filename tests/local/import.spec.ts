@@ -148,7 +148,7 @@ test('importar fatura de cartão em CSV e mapear colunas de um formato desconhec
   expect(norm(await p.locator('.import-table').textContent())).toContain('+ R$ 1.000,00') // pegou o saldo
   await p.click('button:has-text("Ajustar colunas")')
   await expect(p.getByText('Diga qual coluna é cada coisa')).toBeVisible()
-  await p.getByLabel('Valor').selectOption({ label: '4. Quanto' })
+  await p.locator('label', { hasText: /^Valor/ }).locator('select').selectOption({ label: '4. Quanto' })
   await expect(p.getByText('Prévia:')).toBeVisible()
   await p.click('button:has-text("Usar essas colunas")')
   await expect(p.locator('.import-table tbody tr')).toHaveCount(2)

@@ -6,7 +6,7 @@ export function Money({ value }: { value: number }) {
   return (
     <>
       {int}
-      <span className="cents">,{cents}</span>
+      {cents !== undefined && <span className="cents">,{cents}</span>}
     </>
   )
 }

@@ -1,17 +1,18 @@
-import { Database, Plus } from 'lucide-react'
+import { Database, Eye, EyeOff, Plus } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { cloudReceiptStore, localReceiptStore, prepareFile, type ReceiptMeta } from './cloud/receipts'
 import { applyChanges, COLS, countLocal, SyncEngine, type Change, type Col, type Collections, type SyncStatus } from './cloud/sync'
 import type { Auth } from './cloud/types'
 import { DataModal } from './components/DataModal'
 import { InstallmentDetail } from './components/InstallmentDetail'
+import { Onboarding, type OnboardingStep } from './components/Onboarding'
 import { Modal } from './components/Modal'
 import { ReceiptViewer } from './components/ReceiptViewer'
 import { Sidebar } from './components/Sidebar'
 import { SyncBadge } from './components/SyncBadge'
 import { TransactionForm } from './components/TransactionForm'
 import { seedBudgets, seedGoals, seedSubscriptions, seedTransactions } from './data'
-import { applyInstallments, applyRecurring, applySubscriptions, initialChargedUntil, installmentStatus, missingInstallmentTxs, skipToToday, uid } from './lib'
+import { applyInstallments, applyRecurring, applySubscriptions, initialChargedUntil, installmentStatus, missingInstallmentTxs, setHideValues, skipToToday, uid } from './lib'
 import { Assistant } from './pages/Assistant'
 import { Budgets } from './pages/Budgets'
 import { Overview } from './pages/Overview'
@@ -76,8 +77,28 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
   const [accounts, setAccounts] = useStored<Account[]>('fd:accounts', none)
   const [transfers, setTransfers] = useStored<Transfer[]>('fd:transfers', none)
   const [profile, setProfile] = useStored<Profile[]>('fd:profile', none)
-  const profileName = profile.find((p) => p.id === 'me')?.name ?? ''
-  const [form, setForm] = useState<{ tx?: Transaction; repeat?: boolean } | null>(null)
+  const me = profile.find((p) => p.id === 'me')
+  const profileName = me?.name ?? ''
+  const patchProfile = (patch: Partial<Profile>) => setProfile((l) => [{ ...(l.find((p) => p.id === 'me') ?? { id: 'me', name: '' }), ...patch }])
+  // Modo privacidade: esconde valores na tela (preferência deste aparelho)
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return localStorage.getItem('fd:privacy') === '1'
+    } catch {
+      return false
+    }
+  })
+  setHideValues(hidden)
+  const togglePrivacy = () =>
+    setHidden((h) => {
+      try {
+        localStorage.setItem('fd:privacy', h ? '0' : '1')
+      } catch {
+        /* sem storage */
+      }
+      return !h
+    })
+  const [form, setForm] = useState<{ tx?: Transaction; repeat?: boolean; income?: boolean } | null>(null)
   const [dataOpen, setDataOpen] = useState(false)
   const [tick, setTick] = useState(0)
 
@@ -288,6 +309,28 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     setAccounts((l) => l.filter((a) => a.id !== id))
   }
 
+  const deleteAccountNow = async () => {
+    if (!cloud) return
+    for (const r of receipts) if (!r.path.startsWith('local:')) await store.remove(r).catch(() => undefined)
+    await cloud.auth.deleteAccount()
+    engineRef.current?.dispose()
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('fd:'))
+      .forEach((k) => localStorage.removeItem(k))
+    window.location.hash = ''
+    window.location.reload()
+  }
+
+  // Primeiros passos: aparece enquanto a conta está quase vazia
+  const steps: OnboardingStep[] = [
+    { id: 'name', label: 'Diga como quer ser chamado', done: !!profileName, action: 'Definir nome', run: () => setDataOpen(true) },
+    { id: 'account', label: 'Cadastre suas contas com o saldo de hoje', done: accounts.length > 0, action: 'Cadastrar contas', run: () => go('cards', 'contas') },
+    { id: 'card', label: 'Cadastre seus cartões de crédito', optional: true, done: cards.length > 0, action: 'Cadastrar cartões', run: () => go('cards') },
+    { id: 'income', label: 'Cadastre o seu salário (recorrente)', done: rules.some((r) => r.type === 'income') || txs.some((t) => t.category === 'salario'), action: 'Cadastrar salário', run: () => setForm({ repeat: true, income: true }) },
+    { id: 'entries', label: 'Importe o extrato ou lance suas despesas', done: txs.filter((t) => t.type === 'expense').length >= 3, action: 'Ir para Transações', run: () => go('transactions') },
+  ]
+  const showOnboarding = !me?.onboardingHidden && txs.length < 15 && steps.some((s) => !s.optional && !s.done)
+
   const signOut = async () => {
     if (!cloud) return
     if (!confirm('Sair desta conta? Os dados salvos neste aparelho serão apagados daqui (eles continuam na nuvem).')) return
@@ -311,6 +354,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             <p className="muted">{head.subtitle}</p>
           </div>
           <div className="topbar-right">
+            <button className="icon-btn" onClick={togglePrivacy} aria-label={hidden ? 'Mostrar valores' : 'Ocultar valores'} title={hidden ? 'Mostrar valores' : 'Ocultar valores'} aria-pressed={hidden}>{hidden ? <EyeOff size={16} /> : <Eye size={16} />}</button>
             {cloud && <SyncBadge status={status} onClick={() => void engineRef.current?.sync()} />}
             <button className="btn ghost" onClick={() => setDataOpen(true)}><Database size={15} /> Dados</button>
             <button className="btn light" onClick={() => setForm({})}><Plus size={16} /> Nova transação</button>
@@ -319,6 +363,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
 
         {page === 'overview' && (
           <Overview
+            onboarding={showOnboarding ? <Onboarding steps={steps} onDismiss={() => patchProfile({ onboardingHidden: true })} /> : null}
             installments={installments}
             cards={cards}
             accounts={accounts}
@@ -443,8 +488,8 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
       {dataOpen && (
         <DataModal
           profileName={profileName}
-          onProfileName={(name) => setProfile(name ? [{ id: 'me', name }] : [])}
-          cloud={cloud ? { email: cloud.email, onSignOut: () => void signOut(), onChangePassword: (pw) => cloud.auth.updatePassword(pw) } : undefined}
+          onProfileName={(name) => patchProfile({ name })}
+          cloud={cloud ? { email: cloud.email, onSignOut: () => void signOut(), onChangePassword: (pw) => cloud.auth.updatePassword(pw), onDeleteAccount: deleteAccountNow } : undefined}
           data={{ txs, subs, budgets, goals, recurring: rules, installments, cards, accounts, transfers }}
           onClose={() => setDataOpen(false)}
           onImport={(d) => {
@@ -474,7 +519,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
       )}
       {form && (
         <Modal title={form.tx ? 'Editar transação' : form.repeat ? 'Nova recorrente' : 'Nova transação'} onClose={() => setForm(null)}>
-          <TransactionForm cards={cards} accounts={accounts} initial={form.tx} startRepeating={form.repeat} onSave={saveForm} />
+          <TransactionForm cards={cards} accounts={accounts} initial={form.tx} startRepeating={form.repeat} startIncome={form.income} onSave={saveForm} />
         </Modal>
       )}
       {detailItem && (

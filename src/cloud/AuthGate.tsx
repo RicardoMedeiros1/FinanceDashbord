@@ -11,14 +11,14 @@ interface Props {
 /** Só mostra o app para quem está logado. */
 export function AuthGate({ auth, children }: Props) {
   const [session, setSession] = useState<Session | null | 'loading'>('loading')
-  const [recovery, setRecovery] = useState(false)
+  const [recovery, setRecovery] = useState<'recovery' | 'invite' | null>(null)
 
   useEffect(() => {
     let alive = true
     auth.getSession().then((s) => alive && setSession(s), () => alive && setSession(null))
     // ignora renovações de token: só muda a tela se o usuário mudou
     const off = auth.onChange((s) => setSession((cur) => (cur !== 'loading' && cur?.userId === s?.userId ? cur : s)))
-    const offRecovery = auth.onRecovery(() => setRecovery(true))
+    const offRecovery = auth.onRecovery((kind) => setRecovery(kind))
     return () => {
       alive = false
       off()
@@ -33,9 +33,11 @@ export function AuthGate({ auth, children }: Props) {
       <div className="login">
         <div className="login-card">
           <span className="brand-mark" />
-          <h1>Nova senha</h1>
-          <p className="muted">Escolha a nova senha da sua conta ({session.email}).</p>
-          <PasswordForm submitLabel="Salvar e entrar" onSubmit={(pw) => auth.updatePassword(pw)} onDone={() => setRecovery(false)} />
+          <h1>{recovery === 'invite' ? 'Bem-vindo ao Finn' : 'Nova senha'}</h1>
+          <p className="muted">
+            {recovery === 'invite' ? `Você foi convidado. Defina a senha da sua conta (${session.email}).` : `Escolha a nova senha da sua conta (${session.email}).`}
+          </p>
+          <PasswordForm submitLabel={recovery === 'invite' ? 'Definir senha e entrar' : 'Salvar e entrar'} onSubmit={(pw) => auth.updatePassword(pw)} onDone={() => setRecovery(null)} />
         </div>
       </div>
     )
@@ -131,6 +133,7 @@ function Login({ auth }: { auth: Auth }) {
           <Lock size={15} /> {busy ? 'Entrando…' : 'Entrar'}
         </button>
         <button type="button" className="link center" onClick={() => { setMode('forgot'); setError('') }}>Esqueci minha senha</button>
+        <a className="link center small" href="#/privacy">Privacidade e termos de uso</a>
       </form>
     </div>
   )

@@ -60,3 +60,21 @@ create policy "receipts_update_own" on storage.objects for update to authenticat
   using (bucket_id = 'receipts' and (storage.foldername(name))[1] = auth.uid()::text);
 create policy "receipts_delete_own" on storage.objects for delete to authenticated
   using (bucket_id = 'receipts' and (storage.foldername(name))[1] = auth.uid()::text);
+
+-- Excluir a própria conta (o app chama esta função em "Dados → Excluir minha conta").
+-- Apaga o usuário; as linhas de `records` saem junto (on delete cascade). Os arquivos de comprovantes
+-- são removidos pelo próprio app, pela API de armazenamento, antes desta chamada.
+create or replace function public.delete_my_account() returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not authenticated';
+  end if;
+  delete from auth.users where id = auth.uid();
+end $$;
+
+revoke all on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;

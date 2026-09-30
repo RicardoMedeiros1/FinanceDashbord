@@ -1,10 +1,16 @@
 import type { Cycle, Installment, Recurring, Subscription, Transaction } from './types'
 
-export const brl = (n: number) =>
-  n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+let hideValues = false
+/** Modo privacidade: esconde os valores em dinheiro na tela (só a exibição; os dados não mudam). */
+export const setHideValues = (v: boolean) => {
+  hideValues = v
+}
+export const valuesHidden = () => hideValues
+
+export const brl = (n: number) => (hideValues ? 'R$ •••••' : n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }))
 
 export const brlShort = (n: number) =>
-  Math.abs(n) >= 1000 ? `R$ ${(Math.round(n / 100) / 10).toFixed(1).replace('.', ',')}k` : `R$ ${Math.round(n)}`
+  hideValues ? 'R$ ••' : Math.abs(n) >= 1000 ? `R$ ${(Math.round(n / 100) / 10).toFixed(1).replace('.', ',')}k` : `R$ ${Math.round(n)}`
 
 export const uid = () => Math.random().toString(36).slice(2, 10)
 

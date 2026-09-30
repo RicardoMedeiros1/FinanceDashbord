@@ -1,5 +1,5 @@
 import { CreditCard, Landmark, TrendingDown, TrendingUp } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { CATEGORIES } from '../categories'
 import { GoalsCard } from '../components/GoalsCard'
@@ -7,7 +7,7 @@ import { Insights } from '../components/Insights'
 import { Money } from '../components/Money'
 import { StatCard } from '../components/StatCard'
 import { buildInsights } from '../insights'
-import { brl, brlShort, daysUntil, formatDate, installmentStatus, parseISO, inMonth, monthKey, monthLabel, monthlyCost, nextCharge, shiftMonth, sumBy, toISO } from '../lib'
+import { brl, brlShort, valuesHidden, daysUntil, formatDate, installmentStatus, parseISO, inMonth, monthKey, monthLabel, monthlyCost, nextCharge, shiftMonth, sumBy, toISO } from '../lib'
 import { nextInvoiceToPay } from '../cards'
 import { accountBalance, totalBalance } from '../accounts'
 import { ForecastCard } from '../components/ForecastCard'
@@ -19,6 +19,7 @@ const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 1
 const tooltipStyle = { background: '#1c1c1c', border: '1px solid #2a2a2a', borderRadius: 10, color: '#f5f5f5' }
 
 interface Props {
+  onboarding?: ReactNode
   txs: Transaction[]
   subs: Subscription[]
   installments: Installment[]
@@ -33,7 +34,7 @@ interface Props {
   onDeposit: (id: string, amount: number) => void
 }
 
-export function Overview({ txs, subs, installments, cards, accounts, transfers, rules, budgets, goals, onNavigate, onAddGoal, onDeposit }: Props) {
+export function Overview({ onboarding, txs, subs, installments, cards, accounts, transfers, rules, budgets, goals, onNavigate, onAddGoal, onDeposit }: Props) {
   const [range, setRange] = useState<'30d' | '6m'>('30d')
 
   const months = useMemo(
@@ -73,7 +74,8 @@ export function Overview({ txs, subs, installments, cards, accounts, transfers, 
   )
 
   const forecast = useMemo(() => buildForecast({ txs, rules, subs, installments, cards, accounts, transfers }), [txs, rules, subs, installments, cards, accounts, transfers])
-  const insights = useMemo(() => buildInsights(txs, subs, budgets, installments, cards, forecast), [txs, subs, budgets, installments, cards, forecast])
+  const hide = valuesHidden() // os textos dos insights já vêm formatados: refaz ao alternar a privacidade
+  const insights = useMemo(() => buildInsights(txs, subs, budgets, installments, cards, forecast), [txs, subs, budgets, installments, cards, forecast, hide]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const upcoming = [
     ...activeSubs.map((x) => ({ id: x.id, name: x.name, color: x.color, date: nextCharge(x), price: x.price, note: '' })),
@@ -94,6 +96,7 @@ export function Overview({ txs, subs, installments, cards, accounts, transfers, 
 
   return (
     <>
+      {onboarding}
       <div className="grid stats">
         <StatCard label="Saldo do mês" icon={<Landmark size={13} />} value={<Money value={m.balance} />} spark={months.map((x) => x.balance)} color="#3b6ef5" delta={p.balance > 0 ? pct(m.balance, p.balance) : null} />
         <StatCard label="Receitas" icon={<TrendingUp size={13} />} value={<Money value={m.Receitas} />} spark={months.map((x) => x.Receitas)} color="#8b3ff5" delta={pct(m.Receitas, p.Receitas)} foot={incomeSplit} />
@@ -116,7 +119,7 @@ export function Overview({ txs, subs, installments, cards, accounts, transfers, 
                 <BarChart data={chart} barGap={1} barCategoryGap={range === '30d' ? '18%' : '30%'}>
                   <CartesianGrid stroke="#1f1f1f" vertical={false} />
                   <XAxis dataKey="name" stroke="#6b6b6b" tickLine={false} axisLine={false} interval={range === '30d' ? 4 : 0} fontSize={11} />
-                  <YAxis stroke="#6b6b6b" tickLine={false} axisLine={false} tickFormatter={brlShort} width={62} fontSize={11} />
+                  <YAxis stroke="#6b6b6b" tickLine={false} axisLine={false} tickFormatter={(n: number) => (valuesHidden() ? '' : brlShort(n))} width={62} fontSize={11} />
                   <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(255,255,255,.04)' }} formatter={(v) => brl(Number(v))} />
                   <Bar dataKey="Despesas" fill="#e9e9e9" radius={[2, 2, 0, 0]} />
                   {range === '6m' && <Bar dataKey="Receitas" fill="#e0600f" radius={[2, 2, 0, 0]} />}

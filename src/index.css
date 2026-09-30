@@ -449,3 +449,20 @@ main > .tabs { align-self: flex-start; }
 .import label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 13px; }
 .import-table td:nth-child(2) { white-space: nowrap; }
 @media (max-width: 760px) { .import .row { grid-template-columns: 1fr; } }
+
+/* boas-vindas, privacidade */
+.onboarding { display: flex; flex-direction: column; gap: 12px; border-color: rgba(224, 96, 15, 0.45); background: radial-gradient(120% 100% at 0% 0%, rgba(224, 96, 15, 0.14), transparent 60%), var(--surface); }
+.onboarding .card-head { margin-bottom: 0; align-items: flex-start; }
+.steps { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.steps li { display: flex; align-items: center; gap: 12px; }
+.steps li.done { color: var(--muted); }
+.steps li.done .grow { text-decoration: line-through; }
+.step-check { width: 20px; height: 20px; border-radius: 50%; border: 1px solid #555; display: grid; place-items: center; flex: none; }
+.steps li.done .step-check { background: var(--green); border-color: var(--green); color: #0b0b0b; }
+.doc { max-width: 720px; margin: 0 auto; padding: 28px 20px 60px; line-height: 1.6; }
+.doc h1 { font-size: 26px; margin: 18px 0 4px; }
+.doc h2 { font-size: 17px; margin: 26px 0 6px; }
+.doc ul { list-style: disc; padding-left: 22px; display: flex; flex-direction: column; gap: 6px; }
+.doc p { margin: 8px 0; }
+.doc .back { margin-bottom: 4px; text-decoration: none; }
+.icon-btn[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }

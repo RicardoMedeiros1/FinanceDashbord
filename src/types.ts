@@ -104,6 +104,7 @@ export interface Card {
 export interface Profile {
   id: string
   name: string
+  onboardingHidden?: boolean
 }
 
 /** Conta (corrente, carteira, poupança...). O saldo é: saldo inicial + o que entrou e saiu desde a data inicial. */

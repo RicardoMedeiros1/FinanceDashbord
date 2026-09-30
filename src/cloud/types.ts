@@ -30,8 +30,10 @@ export interface Auth {
   resetPassword(email: string): Promise<void>
   /** Troca a senha do usuário logado (também usada após abrir o link de recuperação). */
   updatePassword(password: string): Promise<void>
-  /** Avisa quando o usuário chegou pelo link de recuperação de senha. */
-  onRecovery(cb: () => void): () => void
+  /** Avisa quando o usuário chegou por um link do e-mail (recuperar senha ou convite) e precisa definir a senha. */
+  onRecovery(cb: (kind: 'recovery' | 'invite') => void): () => void
+  /** Exclui a conta do usuário logado e todos os dados dela (irreversível). */
+  deleteAccount(): Promise<void>
   onChange(cb: (s: Session | null) => void): () => void
   remote(userId: string): Remote
 }

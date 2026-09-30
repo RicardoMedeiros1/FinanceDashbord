@@ -20,6 +20,7 @@ React + TypeScript + Vite, gráficos com Recharts. Os dados ficam salvos no `loc
 - **Contas**: corrente, carteira e poupança com saldo real (saldo inicial + entradas − saídas), transferências entre contas e extrato. Receitas e despesas escolhem a conta; o pagamento da fatura do cartão sai da conta sem virar despesa nova.
 - **Previsão do mês**: quanto ainda entra e sai até o fim do mês (recorrentes, assinaturas, parcelas) e a sobra prevista; com contas, também o saldo previsto no fim do mês, descontando faturas a vencer.
 - **Orçamentos**: limite por categoria com barra de progresso.
+- **Para outras pessoas**: passo a passo de boas-vindas na Visão geral (some sozinho ao concluir ou ao dispensar), convite por e-mail com definição de senha, modo privacidade (esconde os valores), página de privacidade e termos e exclusão da própria conta (**Dados → Excluir minha conta**).
 
 ## Rodando
 

@@ -5,8 +5,8 @@ const KEY = 'fake:session'
 
 export function createFakeAuth(base: string): Auth {
   const listeners = new Set<(s: Session | null) => void>()
-  const recoveryListeners = new Set<() => void>()
-  let recoveryPending = false
+  const recoveryListeners = new Set<(kind: 'recovery' | 'invite') => void>()
+  let recoveryPending: 'recovery' | 'invite' | null = null
   const read = (): (Session & { token: string }) | null => {
     try {
       return JSON.parse(localStorage.getItem(KEY) ?? 'null')
@@ -17,17 +17,17 @@ export function createFakeAuth(base: string): Auth {
   const emit = () => listeners.forEach((l) => l(read()))
   const q = (token: string, extra = '') => `${base}${extra}${extra.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
 
-  // simula o link de recuperação: #type=recovery&rt=<token>
-  const m = typeof window !== 'undefined' ? window.location.hash.match(/type=recovery&rt=([^&]+)/) : null
+  // simula o link do e-mail: #type=recovery&rt=<token> ou #type=invite&rt=<token>
+  const m = typeof window !== 'undefined' ? window.location.hash.match(/type=(recovery|invite)&rt=([^&]+)/) : null
   const recovered = m
-    ? fetch(`${base}/recover`, { method: 'POST', body: JSON.stringify({ token: m[1] }) })
+    ? fetch(`${base}/recover`, { method: 'POST', body: JSON.stringify({ token: m[2] }) })
         .then((r) => (r.ok ? r.json() : null))
         .then((j) => {
           if (!j) return
           localStorage.setItem(KEY, JSON.stringify({ ...j, email: 'me@x.com' }))
-          recoveryPending = true
+          recoveryPending = m[1] as 'recovery' | 'invite'
           history.replaceState(null, '', window.location.pathname)
-          recoveryListeners.forEach((l) => l())
+          recoveryListeners.forEach((l) => l(recoveryPending!))
         })
         .catch(() => undefined)
     : Promise.resolve()
@@ -56,12 +56,21 @@ export function createFakeAuth(base: string): Auth {
       const t = read()?.token ?? ''
       const r = await fetch(q(t, '/password'), { method: 'POST', body: JSON.stringify({ password }) }).catch(() => null)
       if (!r || !r.ok) throw new Error('Não foi possível trocar a senha.')
-      recoveryPending = false
+      recoveryPending = null
     },
     onRecovery(cb) {
       recoveryListeners.add(cb)
-      if (recoveryPending) queueMicrotask(cb)
+      if (recoveryPending) {
+        const kind = recoveryPending
+        queueMicrotask(() => cb(kind))
+      }
       return () => void recoveryListeners.delete(cb)
+    },
+    async deleteAccount() {
+      const r = await fetch(q(read()?.token ?? '', '/delete-account'), { method: 'POST' }).catch(() => null)
+      if (!r || !r.ok) throw new Error('Não foi possível excluir a conta agora. Tente de novo mais tarde.')
+      localStorage.removeItem(KEY)
+      emit()
     },
     onChange(cb) {
       listeners.add(cb)

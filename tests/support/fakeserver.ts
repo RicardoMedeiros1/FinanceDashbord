@@ -4,7 +4,7 @@ import { URL } from 'node:url'
 export interface FakeCloud {
   rows: Map<string, any>
   files: Map<string, { buf: Buffer; type: string }>
-  state: { offline: boolean; seq: number; version: number; fetches: string[]; upserts: number; password: string; resets: string[] }
+  state: { offline: boolean; seq: number; version: number; fetches: string[]; upserts: number; password: string; resets: string[]; deleted: boolean }
   close(): Promise<void>
 }
 
@@ -12,7 +12,7 @@ export interface FakeCloud {
 export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
   const rows = new Map<string, any>()
   const files = new Map<string, { buf: Buffer; type: string }>()
-  const state = { offline: false, seq: 0, version: 0, fetches: [] as string[], upserts: 0, password: 'pw', resets: [] as string[] }
+  const state = { offline: false, seq: 0, version: 0, fetches: [] as string[], upserts: 0, password: 'pw', resets: [] as string[], deleted: false }
 
   const srv = http.createServer((req, res) => {
     const u = new URL(req.url ?? '/', `http://localhost:${port}`)
@@ -39,7 +39,7 @@ export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
       }
       if (path === '/login') {
         const b = JSON.parse(body.toString())
-        return b.email === 'me@x.com' && b.password === state.password ? send(200, { userId: 'u1', token: 'tok' }) : send(401, { error: 'bad' })
+        return !state.deleted && b.email === 'me@x.com' && b.password === state.password ? send(200, { userId: 'u1', token: 'tok' }) : send(401, { error: 'bad' })
       }
       if (path === '/reset') {
         state.resets.push(JSON.parse(body.toString()).email)
@@ -48,6 +48,12 @@ export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
       if (path === '/recover') return send(200, { userId: 'u1', token: 'tok' }) // qualquer "link" vale
       if (state.offline) return send(503, { error: 'offline' })
       if (q.token !== 'tok') return send(401, {})
+      if (path === '/delete-account') {
+        rows.clear()
+        files.clear()
+        state.deleted = true
+        return send(200, { ok: true })
+      }
       if (path === '/password') {
         state.password = JSON.parse(body.toString()).password
         return send(200, { ok: true })

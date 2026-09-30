@@ -76,12 +76,13 @@ export function createSupabaseAuth(url: string, key: string): Auth {
     s ? { userId: s.user.id, email: s.user.email ?? '' } : null
 
   // O link de recuperação abre o app com #...type=recovery; o evento pode disparar antes de a tela assinar, então guardamos.
-  let recoveryPending = typeof window !== 'undefined' && /type=recovery/.test(window.location.hash)
-  const recoveryListeners = new Set<() => void>()
+  const fromUrl = typeof window !== 'undefined' ? window.location.hash.match(/type=(recovery|invite)/)?.[1] : undefined
+  let recoveryPending: 'recovery' | 'invite' | null = fromUrl === 'invite' ? 'invite' : fromUrl === 'recovery' ? 'recovery' : null
+  const recoveryListeners = new Set<(kind: 'recovery' | 'invite') => void>()
   client.auth.onAuthStateChange((event) => {
     if (event === 'PASSWORD_RECOVERY') {
-      recoveryPending = true
-      recoveryListeners.forEach((l) => l())
+      recoveryPending = 'recovery'
+      recoveryListeners.forEach((l) => l('recovery'))
     }
   })
   const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}${import.meta.env.BASE_URL}` : undefined
@@ -105,12 +106,20 @@ export function createSupabaseAuth(url: string, key: string): Auth {
     async updatePassword(password) {
       const { error } = await client.auth.updateUser({ password })
       if (error) throw new Error(friendlyAuthError(error))
-      recoveryPending = false
+      recoveryPending = null
     },
     onRecovery(cb) {
       recoveryListeners.add(cb)
-      if (recoveryPending) queueMicrotask(cb)
+      if (recoveryPending) {
+        const kind = recoveryPending
+        queueMicrotask(() => cb(kind))
+      }
       return () => void recoveryListeners.delete(cb)
+    },
+    async deleteAccount() {
+      const { error } = await client.rpc('delete_my_account')
+      if (error) throw new Error('Não foi possível excluir a conta agora. Tente de novo mais tarde.')
+      await client.auth.signOut()
     },
     onChange(cb) {
       const { data } = client.auth.onAuthStateChange((_event, session) => cb(toSession(session)))

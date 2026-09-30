@@ -26,6 +26,12 @@ export interface Auth {
   getSession(): Promise<Session | null>
   signIn(email: string, password: string): Promise<void>
   signOut(): Promise<void>
+  /** Envia o e-mail com o link para criar uma nova senha. */
+  resetPassword(email: string): Promise<void>
+  /** Troca a senha do usuário logado (também usada após abrir o link de recuperação). */
+  updatePassword(password: string): Promise<void>
+  /** Avisa quando o usuário chegou pelo link de recuperação de senha. */
+  onRecovery(cb: () => void): () => void
   onChange(cb: (s: Session | null) => void): () => void
   remote(userId: string): Remote
 }

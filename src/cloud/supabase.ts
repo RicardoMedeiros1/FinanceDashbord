@@ -71,9 +71,20 @@ function createRemote(client: SupabaseClient, userId: string): Remote {
 }
 
 export function createSupabaseAuth(url: string, key: string): Auth {
-  const client = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false } })
+  const client = createClient(url, key, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } })
   const toSession = (s: { user: { id: string; email?: string } } | null): Session | null =>
     s ? { userId: s.user.id, email: s.user.email ?? '' } : null
+
+  // O link de recuperação abre o app com #...type=recovery; o evento pode disparar antes de a tela assinar, então guardamos.
+  let recoveryPending = typeof window !== 'undefined' && /type=recovery/.test(window.location.hash)
+  const recoveryListeners = new Set<() => void>()
+  client.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') {
+      recoveryPending = true
+      recoveryListeners.forEach((l) => l())
+    }
+  })
+  const redirectTo = typeof window !== 'undefined' ? `${window.location.origin}${import.meta.env.BASE_URL}` : undefined
 
   return {
     async getSession() {
@@ -86,6 +97,20 @@ export function createSupabaseAuth(url: string, key: string): Auth {
     },
     async signOut() {
       await client.auth.signOut()
+    },
+    async resetPassword(email) {
+      const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo })
+      if (error) throw new Error(friendlyAuthError(error))
+    },
+    async updatePassword(password) {
+      const { error } = await client.auth.updateUser({ password })
+      if (error) throw new Error(friendlyAuthError(error))
+      recoveryPending = false
+    },
+    onRecovery(cb) {
+      recoveryListeners.add(cb)
+      if (recoveryPending) queueMicrotask(cb)
+      return () => void recoveryListeners.delete(cb)
     },
     onChange(cb) {
       const { data } = client.auth.onAuthStateChange((_event, session) => cb(toSession(session)))

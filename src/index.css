@@ -414,3 +414,7 @@ main > .tabs { align-self: flex-start; }
 .invoice-body .list { width: 100%; }
 .pill.warn { background: rgba(224, 163, 15, 0.16); color: var(--amber); }
 .card-tag { margin-left: 8px; }
+
+.profile-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 14px; }
+.profile-row label { flex: 1; display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 13px; }
+.link.center { align-self: center; }

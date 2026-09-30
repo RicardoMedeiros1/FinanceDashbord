@@ -30,3 +30,8 @@ finn-backup-*.json
 .env
 .env.local
 .env.*.local
+
+# Saídas de testes
+dist-test
+test-results
+playwright-report

@@ -18,7 +18,7 @@ import { Overview } from './pages/Overview'
 import { Subscriptions, type SubsTab } from './pages/Subscriptions'
 import { Transactions, type TxView } from './pages/Transactions'
 import { Cards } from './pages/Cards'
-import type { Budget, Card, CategoryId, Cycle, Goal, Installment, Page, Recurring, Subscription, Transaction } from './types'
+import type { Budget, Card, CategoryId, Cycle, Goal, Installment, Page, Profile, Recurring, Subscription, Transaction } from './types'
 import { useStored } from './useStored'
 
 const TITLES: Record<Page, { title: string; subtitle: string }> = {
@@ -73,12 +73,14 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
   const [rules, setRules] = useStored<Recurring[]>('fd:rules', none)
   const [receipts, setReceipts] = useStored<ReceiptMeta[]>('fd:receipts', none)
   const [cards, setCards] = useStored<Card[]>('fd:cards', none)
+  const [profile, setProfile] = useStored<Profile[]>('fd:profile', none)
+  const profileName = profile.find((p) => p.id === 'me')?.name ?? ''
   const [form, setForm] = useState<{ tx?: Transaction; repeat?: boolean } | null>(null)
   const [dataOpen, setDataOpen] = useState(false)
   const [tick, setTick] = useState(0)
 
   // ---------- sincronização com a nuvem ----------
-  const data: Collections = { txs, subs, budgets, goals, installments, rules, receipts, cards }
+  const data: Collections = { txs, subs, budgets, goals, installments, rules, receipts, cards, profile }
   const dataRef = useRef<Collections>(data)
   // espelho síncrono do estado (o motor de sync lê daqui); `apply` também o atualiza na hora
   useLayoutEffect(() => {
@@ -94,6 +96,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     rules: setRules as never,
     receipts: setReceipts as never,
     cards: setCards as never,
+    profile: setProfile as never,
   }
   const settersRef = useRef(setters) // os setters do React são estáveis
 
@@ -143,7 +146,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
   // toda mudança local agenda um envio
   useEffect(() => {
     engineRef.current?.schedule()
-  }, [txs, subs, budgets, goals, installments, rules, receipts, cards])
+  }, [txs, subs, budgets, goals, installments, rules, receipts, cards, profile])
 
   // ---------- comprovantes ----------
   const store = useMemo(() => (cloud && remote ? cloudReceiptStore(remote, cloud.userId) : localReceiptStore()), [cloud, remote])
@@ -277,7 +280,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
       <main>
         <header className="topbar">
           <div>
-            <h1>{page === 'overview' ? `${greeting()}, Ricardo` : head.title}</h1>
+            <h1>{page === 'overview' ? `${greeting()}${profileName ? `, ${profileName}` : ''}` : head.title}</h1>
             <p className="muted">{head.subtitle}</p>
           </div>
           <div className="topbar-right">
@@ -392,7 +395,9 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
 
       {dataOpen && (
         <DataModal
-          cloud={cloud ? { email: cloud.email, onSignOut: () => void signOut() } : undefined}
+          profileName={profileName}
+          onProfileName={(name) => setProfile(name ? [{ id: 'me', name }] : [])}
+          cloud={cloud ? { email: cloud.email, onSignOut: () => void signOut(), onChangePassword: (pw) => cloud.auth.updatePassword(pw) } : undefined}
           data={{ txs, subs, budgets, goals, recurring: rules, installments, cards }}
           onClose={() => setDataOpen(false)}
           onImport={(d) => {

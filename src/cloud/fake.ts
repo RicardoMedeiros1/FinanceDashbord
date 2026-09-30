@@ -5,6 +5,8 @@ const KEY = 'fake:session'
 
 export function createFakeAuth(base: string): Auth {
   const listeners = new Set<(s: Session | null) => void>()
+  const recoveryListeners = new Set<() => void>()
+  let recoveryPending = false
   const read = (): (Session & { token: string }) | null => {
     try {
       return JSON.parse(localStorage.getItem(KEY) ?? 'null')
@@ -15,8 +17,24 @@ export function createFakeAuth(base: string): Auth {
   const emit = () => listeners.forEach((l) => l(read()))
   const q = (token: string, extra = '') => `${base}${extra}${extra.includes('?') ? '&' : '?'}token=${encodeURIComponent(token)}`
 
+  // simula o link de recuperação: #type=recovery&rt=<token>
+  const m = typeof window !== 'undefined' ? window.location.hash.match(/type=recovery&rt=([^&]+)/) : null
+  const recovered = m
+    ? fetch(`${base}/recover`, { method: 'POST', body: JSON.stringify({ token: m[1] }) })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j) => {
+          if (!j) return
+          localStorage.setItem(KEY, JSON.stringify({ ...j, email: 'me@x.com' }))
+          recoveryPending = true
+          history.replaceState(null, '', window.location.pathname)
+          recoveryListeners.forEach((l) => l())
+        })
+        .catch(() => undefined)
+    : Promise.resolve()
+
   return {
     async getSession() {
+      await recovered
       return read()
     },
     async signIn(email, password) {
@@ -29,6 +47,21 @@ export function createFakeAuth(base: string): Auth {
     async signOut() {
       localStorage.removeItem(KEY)
       emit()
+    },
+    async resetPassword(email) {
+      const r = await fetch(`${base}/reset`, { method: 'POST', body: JSON.stringify({ email }) }).catch(() => null)
+      if (!r || !r.ok) throw new Error('Sem conexão com o servidor. Verifique a internet.')
+    },
+    async updatePassword(password) {
+      const t = read()?.token ?? ''
+      const r = await fetch(q(t, '/password'), { method: 'POST', body: JSON.stringify({ password }) }).catch(() => null)
+      if (!r || !r.ok) throw new Error('Não foi possível trocar a senha.')
+      recoveryPending = false
+    },
+    onRecovery(cb) {
+      recoveryListeners.add(cb)
+      if (recoveryPending) queueMicrotask(cb)
+      return () => void recoveryListeners.delete(cb)
     },
     onChange(cb) {
       listeners.add(cb)

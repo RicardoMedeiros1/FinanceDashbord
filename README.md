@@ -56,3 +56,11 @@ Supabase seguindo [docs/SUPABASE.md](docs/SUPABASE.md). Sem isso o app continua 
 ### Seus dados
 
 Ficam no navegador de cada aparelho (`localStorage`). Para levar de um aparelho a outro, use **Dados → Exportar backup** e **Importar backup**.
+
+## Testes
+
+- `npm test`: roda tudo (unitários + ponta a ponta com Playwright). Os testes de ponta a ponta sobem o app e, para a nuvem, um servidor falso local (`tests/support/fakeserver.ts`); nenhum acesso ao Supabase real.
+- `npm run test:unit`: só a lógica pura (faturas, parcelas, assinaturas, sincronização, erros de login).
+- Na primeira vez: `npx playwright install chromium`. Se você já tem um Chromium instalado, use `PW_CHROMIUM_PATH=/caminho/do/chromium npm test`.
+- Os testes usam um relógio fixo (29/09/2026), então o resultado não muda com o dia em que rodam.
+- No GitHub, o workflow de publicação roda o tipo-checagem e todos os testes antes de publicar; em pull requests, o workflow *Tests* roda a mesma verificação.

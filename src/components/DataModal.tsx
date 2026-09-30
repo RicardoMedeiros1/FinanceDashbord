@@ -1,6 +1,7 @@
-import { Download, LogOut, RotateCcw, Trash2, Upload } from 'lucide-react'
+import { Download, KeyRound, LogOut, RotateCcw, Trash2, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { Budget, Card, Goal, Installment, Recurring, Subscription, Transaction } from '../types'
+import { PasswordForm } from '../cloud/PasswordForm'
 import { Modal } from './Modal'
 
 export interface AppData {
@@ -16,9 +17,12 @@ export interface AppData {
 export interface CloudInfo {
   email: string
   onSignOut: () => void
+  onChangePassword: (password: string) => Promise<void>
 }
 
 interface Props {
+  profileName: string
+  onProfileName: (name: string) => void
   cloud?: CloudInfo
   data: AppData
   onImport: (d: AppData) => void
@@ -35,9 +39,11 @@ function parse(text: string): AppData {
   return { txs: raw.txs, subs: raw.subs, budgets: raw.budgets, goals: Array.isArray(raw.goals) ? raw.goals : [], recurring: Array.isArray(raw.recurring) ? raw.recurring : [], installments: Array.isArray(raw.installments) ? raw.installments : [], cards: Array.isArray(raw.cards) ? raw.cards : [] }
 }
 
-export function DataModal({ cloud, data, onImport, onReset, onClear, onClose }: Props) {
+export function DataModal({ profileName, onProfileName, cloud, data, onImport, onReset, onClear, onClose }: Props) {
   const file = useRef<HTMLInputElement>(null)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [name, setName] = useState(profileName)
+  const [pwOpen, setPwOpen] = useState(false)
 
   const exportFile = () => {
     const blob = new Blob([JSON.stringify({ version: 1, ...data }, null, 2)], { type: 'application/json' })
@@ -62,6 +68,20 @@ export function DataModal({ cloud, data, onImport, onReset, onClear, onClose }: 
 
   return (
     <Modal title="Seus dados" onClose={onClose}>
+      <form
+        className="profile-row"
+        onSubmit={(e) => {
+          e.preventDefault()
+          onProfileName(name.trim())
+          setMsg({ ok: true, text: 'Nome salvo.' })
+        }}
+      >
+        <label>
+          Seu nome (aparece na saudação)
+          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Como quer ser chamado" maxLength={40} />
+        </label>
+        <button className="btn" disabled={name.trim() === profileName}>Salvar</button>
+      </form>
       {cloud ? (
         <p className="muted small data-note">
           Conectado como <strong>{cloud.email}</strong>. Seus dados ficam na sua conta e sincronizam entre os aparelhos. O backup é uma cópia extra em arquivo; comprovantes não entram nele.
@@ -99,6 +119,9 @@ export function DataModal({ cloud, data, onImport, onReset, onClear, onClose }: 
           </button>
         )}
         {cloud && (
+          <button className="btn" onClick={() => setPwOpen(true)}><KeyRound size={16} /> Trocar senha</button>
+        )}
+        {cloud && (
           <button className="btn ghost" onClick={cloud.onSignOut}><LogOut size={16} /> Sair desta conta</button>
         )}
       </div>
@@ -114,6 +137,18 @@ export function DataModal({ cloud, data, onImport, onReset, onClear, onClose }: 
         }}
       />
       {msg && <p className={`small ${msg.ok ? 'pos' : 'bad-text'}`} role="status">{msg.text}</p>}
+      {pwOpen && cloud && (
+        <Modal title="Trocar senha" onClose={() => setPwOpen(false)}>
+          <PasswordForm
+            submitLabel="Salvar nova senha"
+            onSubmit={cloud.onChangePassword}
+            onDone={() => {
+              setPwOpen(false)
+              setMsg({ ok: true, text: 'Senha alterada.' })
+            }}
+          />
+        </Modal>
+      )}
     </Modal>
   )
 }

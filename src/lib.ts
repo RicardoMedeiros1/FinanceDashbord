@@ -40,7 +40,7 @@ export const sumBy = (list: Transaction[], type: 'income' | 'expense') =>
   list.filter((t) => t.type === type).reduce((s, t) => s + t.amount, 0)
 
 const subCycle = (s: Subscription): Cycle => (s.cycle === 'monthly' ? 'monthly' : 'yearly')
-const subOccurrence = (s: Subscription, n: number) => occurrence(s.billingDate, subCycle(s), n)
+export const subOccurrence = (s: Subscription, n: number) => occurrence(s.billingDate, subCycle(s), n)
 
 /** Próxima cobrança de uma assinatura, a partir de hoje (hoje conta). */
 export function nextCharge(sub: Subscription, today = new Date()): Date {
@@ -113,7 +113,7 @@ export function applyRecurring(rules: Recurring[], today = toISO(new Date())) {
     for (let guard = 0; guard < 1000; guard++) {
       const date = occurrence(r.anchor, r.cycle, n)
       if (date > today) break
-      txs.push({ id: `${r.id}-${n}`, description: r.description, amount: r.amount, type: r.type, category: r.category, date, ruleId: r.id, cardId: r.cardId })
+      txs.push({ id: `${r.id}-${n}`, description: r.description, amount: r.amount, type: r.type, category: r.category, date, ruleId: r.id, cardId: r.cardId, accountId: r.accountId })
       n++
     }
     if (n === r.generated) return r
@@ -167,6 +167,7 @@ export function installmentTx(i: Installment, k: number): Transaction {
     date: occurrence(i.firstDate, 'monthly', k),
     ruleId: i.id,
     cardId: i.cardId,
+    accountId: i.accountId,
   }
 }
 
@@ -225,7 +226,7 @@ export function applySubscriptions(subs: Subscription[], today = toISO(new Date(
         const date = subOccurrence(s, n)
         if (date > today) break
         if (date <= s.chargedUntil) continue
-        txs.push({ id: `${s.id}-c${date}`, description: s.name, amount: s.price, type: 'expense', category: s.category ?? 'assinaturas', date, ruleId: s.id, cardId: s.cardId })
+        txs.push({ id: `${s.id}-c${date}`, description: s.name, amount: s.price, type: 'expense', category: s.category ?? 'assinaturas', date, ruleId: s.id, cardId: s.cardId, accountId: s.accountId })
       }
     }
     if (s.chargedUntil >= today) return s

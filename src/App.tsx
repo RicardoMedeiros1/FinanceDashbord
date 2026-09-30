@@ -22,6 +22,7 @@ import { Overview } from './pages/Overview'
 import { Subscriptions, type SubsTab } from './pages/Subscriptions'
 import { Transactions, type TxView } from './pages/Transactions'
 import { Cards, type CardsTab } from './pages/Cards'
+import { Invest, type InvestTab } from './pages/Invest'
 import type { Account, BankLink, Budget, SpendGroup, Card, CategoryId, Cycle, Goal, Installment, Page, Profile, Recurring, Subscription, Transaction, Transfer } from './types'
 import { useStored } from './useStored'
 
@@ -31,6 +32,7 @@ const TITLES: Record<Page, { title: string; subtitle: string }> = {
   subscriptions: { title: 'Assinaturas e parcelas', subtitle: 'O que renova no cartão e o que você ainda está pagando' },
   cards: { title: 'Cartões e contas', subtitle: 'Saldo das contas, fechamento e fatura de cada cartão' },
   budgets: { title: 'Orçamentos', subtitle: 'Limites de gasto por categoria' },
+  invest: { title: 'Investir', subtitle: 'Reserva de emergência e simulador, para aprender antes de investir' },
   assistant: { title: 'Assistente', subtitle: 'Tire dúvidas sobre o seu dinheiro' },
 }
 
@@ -558,6 +560,17 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             onChange={(category: CategoryId, limit) =>
               setBudgets((l) => (l.some((b) => b.category === category) ? l.map((b) => (b.category === category ? { ...b, limit } : b)) : [...l, { category, limit }]))
             }
+          />
+        )}
+        {page === 'invest' && (
+          <Invest
+            tab={(sub === 'simulador' ? 'simulator' : 'reserve') satisfies InvestTab}
+            onTab={(t) => go('invest', t === 'simulator' ? 'simulador' : '')}
+            txs={txs}
+            accounts={accounts}
+            transfers={transfers}
+            reserve={me?.reserve}
+            onReserve={(reserve) => patchProfile({ reserve })}
           />
         )}
         {page === 'assistant' && <Assistant txs={txs} subs={subs} budgets={budgets} installments={installments} cards={cards} accounts={accounts} transfers={transfers} rules={rules} />}

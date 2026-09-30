@@ -1,3 +1,5 @@
+import type { ReserveSettings } from './reserve'
+
 export type CategoryId =
   | 'moradia'
   | 'alimentacao'
@@ -46,7 +48,7 @@ export interface Budget {
 
 export type AccountKind = 'checking' | 'cash' | 'savings' | 'other'
 
-export type Page = 'overview' | 'transactions' | 'subscriptions' | 'cards' | 'budgets' | 'assistant'
+export type Page = 'overview' | 'transactions' | 'subscriptions' | 'cards' | 'budgets' | 'invest' | 'assistant'
 
 export interface Goal {
   id: string
@@ -127,6 +129,7 @@ export interface Profile {
   onboardingHidden?: boolean
   banks?: BankLink[]
   groups?: SpendGroup[]
+  reserve?: ReserveSettings
 }
 
 /** Conta (corrente, carteira, poupança...). O saldo é: saldo inicial + o que entrou e saiu desde a data inicial. */

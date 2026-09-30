@@ -528,3 +528,37 @@ main { min-width: 0; }
 .transfer-review input[type=checkbox] { margin-top: 4px; width: auto; }
 .transfer-banner .grow { flex: 1; min-width: 220px; }
 .transfer-review .badge { margin-left: 0; align-self: flex-start; }
+
+/* investir */
+.invest, .invest-tab { display: flex; flex-direction: column; gap: 16px; }
+.reserve-numbers { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 10px 0 14px; }
+.reserve-numbers div { display: flex; flex-direction: column; gap: 2px; }
+.reserve-numbers strong { font-size: 22px; }
+.reserve-msg { margin: 12px 0 4px; }
+.reserve-base { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.check-inline { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; }
+.check-inline input { width: auto; }
+.form-inline { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; color: var(--muted); font-size: 13px; max-width: 280px; }
+.reserve-plan { margin: 0 0 12px; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.plain { margin: 0 0 8px; padding-left: 18px; display: flex; flex-direction: column; gap: 8px; line-height: 1.5; font-size: 14px; }
+.invest-note h3 { display: flex; align-items: center; gap: 6px; }
+.form .row.three { grid-template-columns: repeat(3, 1fr); }
+.sim-params { margin-top: 10px; }
+.sim-params summary { cursor: pointer; color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+.sim-table td, .sim-table th { white-space: nowrap; }
+.sim-table td:first-child { white-space: normal; min-width: 240px; }
+.sim-table tr.best { background: rgba(62, 207, 110, 0.06); }
+.sim-table .badge { margin-left: 8px; background: rgba(62, 207, 110, 0.16); color: var(--green); }
+.sim-chart { height: 300px; }
+@media (max-width: 760px) { .form .row.three { grid-template-columns: 1fr; } }
+/* menu de baixo no celular: com 7 itens, cada um divide o espaço */
+@media (max-width: 760px) {
+  nav { gap: 2px; }
+  .nav-item { min-width: 0; flex: 1; padding: 0 2px; }
+  .nav-label { font-size: 9.5px; }
+}
+/* barras de abas e de opções nunca passam da largura do cartão */
+.tabs, .segmented { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.card-head { flex-wrap: wrap; gap: 8px 12px; }
+.reserve-acc { flex: 1; flex-direction: row; }
+.invest-tab .form + .muted.small { margin-top: 10px; }

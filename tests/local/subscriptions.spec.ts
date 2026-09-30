@@ -28,7 +28,7 @@ test('assinaturas viram despesa a cada cobrança', async ({ browser, baseURL }) 
   // A1) checkbox marcado por padrão → despesa da cobrança deste mês
   await add('Netflix', '55,90', 'monthly', `${ym}-01`, 'lazer')
   console.log('checkbox:', await p.locator('label.check').textContent())
-  await p.screenshot({ path: 'sub-form.png' })
+  
   await p.click('form button.btn.primary')
   let txs = await get('fd:txs'); console.log('A1', JSON.stringify(txs.map((t) => [t.date, t.description, t.category, t.amount])))
   assert(txs.length === 1 && txs[0].date === `${ym}-01` && txs[0].category === 'lazer' && txs[0].amount === 55.9)
@@ -80,8 +80,8 @@ test('assinaturas viram despesa a cada cobrança', async ({ browser, baseURL }) 
   // E) visão geral soma as assinaturas do mês
   await p.click('.nav-item[aria-label="Visão geral"]'); await p.waitForTimeout(400)
   console.log('Despesas card:', (await p.locator('.stat >> nth=2').textContent()).replace(/ /g, ' '))
-  await p.screenshot({ path: 'subs-overview.png' })
-  await p.click('.nav-item[aria-label="Assinaturas"]'); await p.screenshot({ path: 'subs-page.png' })
+  
+  await p.click('.nav-item[aria-label="Assinaturas"]'); 
   console.log('errors', errs); console.log('ALL OK'); 
 
 })

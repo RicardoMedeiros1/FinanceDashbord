@@ -41,7 +41,7 @@ test('cartões: faturas, limite e vínculo com despesas', async ({ browser, base
   const tile = norm(await p.locator('.cc').textContent()); console.log('tile:', tile)
   assert(tile.includes('R$ 230,00') && tile.includes('Fecha em 5 dias') && tile.includes('05 de out') && tile.includes('vence 12 de out'))
   assert(tile.includes('disponível R$ 4.770,00') && tile.includes('Melhor dia de compra: dia 6'))
-  await p.screenshot({ path: 'cards-list.png' })
+  
 
   // 4) faturas
   await p.click('.cc button:has-text("Ver faturas")'); assert.strictEqual(await p.evaluate(() => location.hash), `#/cards/${cid}`)
@@ -49,7 +49,7 @@ test('cartões: faturas, limite e vínculo com despesas', async ({ browser, base
   const octRow = p.locator('.invoice', { hasText: 'Aberta' }); const sepRow = p.locator('.invoice', { hasText: 'Vencida' })
   const oct = norm(await octRow.textContent()); assert(oct.includes('R$ 230,00') && oct.includes('Restaurante') && oct.includes('Farmácia'))
   const sep = norm(await sepRow.textContent()); assert(sep.includes('R$ 150,00') && sep.includes('Fechamento'), 'compra no dia do fechamento fica na fatura que fecha')
-  await p.screenshot({ path: 'cards-detail.png' })
+  
   await sepRow.locator('button:has-text("Marcar como paga")').click(); assert((await p.locator('.invoice', { hasText: 'Paga' }).count()) === 1)
   assert.deepStrictEqual((await p.evaluate(() => JSON.parse(localStorage.getItem('fd:cards'))))[0].paid, ['2026-09'])
   await p.reload(); await p.waitForSelector('.invoices'); assert((await p.locator('.invoice', { hasText: 'Paga' }).count()) === 1, 'pago persiste')
@@ -87,7 +87,7 @@ test('cartões: faturas, limite e vínculo com despesas', async ({ browser, base
   assert.strictEqual(await p.evaluate(() => location.hash), '#/cards')
 
   // 10) celular: 6 itens no menu sem rolagem horizontal
-  await p.setViewportSize({ width: 390, height: 844 }); await sleep(300); assert.strictEqual(await p.evaluate(() => document.documentElement.scrollWidth), 390); await p.screenshot({ path: 'cards-mobile.png' })
+  await p.setViewportSize({ width: 390, height: 844 }); await sleep(300); assert.strictEqual(await p.evaluate(() => document.documentElement.scrollWidth), 390); 
   console.log('errors', errs); assert.strictEqual(errs.length, 0); console.log('ALL OK'); 
 
 })

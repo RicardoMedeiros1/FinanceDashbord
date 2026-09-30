@@ -27,14 +27,14 @@ test('parcelas: despesas automáticas, edição e comprovantes de backup', async
   console.log('first date auto:', await p.inputValue('form input[type=date] >> nth=1'))
   assert.strictEqual(await p.inputValue('form input[type=date] >> nth=1'), '2026-04-10')
   console.log('preview:', await p.locator('[role=note]').textContent())
-  await p.screenshot({ path: 'inst-form.png' })
+  
   await p.click('form button.btn.primary'); await p.waitForTimeout(300)
 
   let items = await get('fd:installments'); console.log('saved', JSON.stringify(items[0]))
   assert.strictEqual(items.length, 1)
   const card = (await p.locator('.card.sub').textContent()).replace(/\u00a0/g, ' '); console.log('card:', card)
   assert(card.includes('6 de 12 pagas') && card.includes('R$ 1.500,00'))
-  await p.screenshot({ path: 'inst-page.png' })
+  
 
   // editar: mudar nº de parcelas para 10 → termina em jan/2027, 6 pagas, faltam 4
   await p.click('button[aria-label="Editar iPhone 15"]')
@@ -49,7 +49,7 @@ test('parcelas: despesas automáticas, edição e comprovantes de backup', async
   const up = (await p.locator('.list.compact').textContent()).replace(/\u00a0/g, ' '); console.log('upcoming:', up)
   assert(up.includes('iPhone 15') && up.includes('parcela 7/10'))
   const ins = await p.locator('.ai-card').textContent(); console.log('insights has parcelamento:', ins.includes('parcelamento'))
-  await p.screenshot({ path: 'inst-overview.png' })
+  
 
   // assistente
   await p.click('.nav-item[aria-label="Assistente"]'); await p.click('.chip-btn:has-text("parcelas")'); await p.waitForTimeout(300)
@@ -71,7 +71,7 @@ test('parcelas: despesas automáticas, edição e comprovantes de backup', async
   assert.strictEqual((await get('fd:installments')).length, 1)
   // mobile
   await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300)
-  await p.screenshot({ path: 'inst-mobile.png' })
+  
   console.log('errors', errs); console.log('ALL OK'); 
 
 })

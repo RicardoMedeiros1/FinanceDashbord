@@ -24,7 +24,7 @@ test('salário fixo e renda variável', async ({ browser, baseURL }) => {
   await p.selectOption('form select >> nth=0', 'salario')
   assert.strictEqual(await p.isChecked('input[type=checkbox]'), true, 'salário sugere repetir')
   await p.fill('input[placeholder="Ex.: Mercado"]', 'Salário empresa'); await p.fill('input[placeholder="0,00"]', '5000'); await p.fill('form input[type=date]', `${today.ym}-05`)
-  console.log('botão:', await p.textContent('form button.btn.primary')); await p.screenshot({ path: 'income-form.png' })
+  console.log('botão:', await p.textContent('form button.btn.primary')); 
   await p.click('form button.btn.primary'); await sleep(300)
   const rules = await ls('fd:rules'); assert(rules.length === 1 && rules[0].cycle === 'monthly' && rules[0].category === 'salario' && rules[0].type === 'income')
   let txs = await ls('fd:txs'); assert(txs.length === 1 && txs[0].category === 'salario' && txs[0].date === `${today.ym}-05` && txs[0].amount === 5000); console.log('salário: regra mensal + lançamento de', txs[0].date)
@@ -47,7 +47,7 @@ test('salário fixo e renda variável', async ({ browser, baseURL }) => {
   assert(rec.includes('R$ 6.450,00') && rec.includes('Fixa R$ 5,0k') && rec.includes('Variável R$ 1,5k'))
   const ai = norm(await p.locator('.ai-card').textContent()); console.log('insights:', ai.slice(0, 400))
   assert(ai.includes('Salário fixo cobre as despesas') || ai.includes('Salário fixo')); assert(ai.includes('Renda variável líquida: R$ 1.150,00'))
-  await p.screenshot({ path: 'income-overview.png' })
+  
 
   // 5) orçamentos não listam receitas, mas listam custos do trabalho
   await p.click('.nav-item[aria-label="Orçamentos"]'); await sleep(300)

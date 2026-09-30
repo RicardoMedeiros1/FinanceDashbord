@@ -35,3 +35,6 @@ finn-backup-*.json
 dist-test
 test-results
 playwright-report
+
+# Capturas soltas na raiz (testes/depuração)
+/*.png

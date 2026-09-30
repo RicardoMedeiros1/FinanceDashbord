@@ -88,7 +88,7 @@ test('sincronização entre dois aparelhos, offline, conflito, parcelas e compro
   await bb.click('.nav-item[aria-label="Assinaturas"]'); await bb.click('[role=tab]:has-text("Parcelas")'); await until(async () => (await bb.ls('fd:receipts'))?.length === 1, 'B recebe meta')
   await bb.click('.details-btn'); await bb.click('button[aria-label="Ver comprovante da parcela 1"]'); await bb.waitForSelector('img.receipt-img')
   assert.strictEqual(await bb.evaluate(() => { const i = document.querySelector('img.receipt-img'); return i.complete && i.naturalWidth > 0 }), true); console.log('10 ok: B visualiza o mesmo comprovante')
-  await bb.screenshot({ path: 'cloud-receipt.png' })
+  
   await bb.click('.overlay:last-of-type .icon-btn[aria-label="Fechar"]')
   // B remove → arquivo some no servidor, A vê
   await bb.click('button[aria-label="Remover comprovante da parcela 1"]'); await until(() => files.size === 0, 'arquivo removido'); await until(() => live('receipts').length === 0, 'meta removida')
@@ -108,7 +108,7 @@ test('sincronização entre dois aparelhos, offline, conflito, parcelas e compro
   // ===== 12) sair limpa o aparelho =====
   await D.p.click('button:has-text("Dados")'); await D.p.click('button:has-text("Sair desta conta")'); await D.p.waitForSelector('input[type=email]')
   const left = await D.p.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('fd:'))); console.log('12 ok: chaves restantes:', JSON.stringify(left)); assert.strictEqual(left.length, 0)
-  await D.p.screenshot({ path: 'cloud-login.png' })
+  
   console.log('errors:', errs); assert.strictEqual(errs.length, 0)
 ; 
 

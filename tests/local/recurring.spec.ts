@@ -75,7 +75,7 @@ test('recorrentes e edição de transação', async ({ browser, baseURL }) => {
   await p.click('form button.btn.primary'); await p.waitForTimeout(300)
   assert.strictEqual((await get('fd:txs')).length, 7)
   assert.strictEqual((await get('fd:rules')).length, 2)
-  await p.screenshot({ path: 'rules.png' })
+  
 
   // 7) excluir a regra mantém os lançamentos já gerados
   await p.click('button[aria-label^="Excluir recorrência Freela"]'); await p.waitForTimeout(200)
@@ -89,7 +89,7 @@ test('recorrentes e edição de transação', async ({ browser, baseURL }) => {
   console.log('backup has recurring:', json.recurring.length)
   await p.click('.icon-btn[aria-label="Fechar"]')
   await p.click('button:has-text("Lançamentos")'); await p.selectOption('.toolbar select', '2026-04'); await p.waitForTimeout(200)
-  await p.screenshot({ path: 'tx-list.png' })
+  
   console.log('errors', errs); console.log('ALL OK'); 
 
 })

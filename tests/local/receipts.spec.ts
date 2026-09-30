@@ -18,7 +18,7 @@ test('comprovantes no modo local (IndexedDB)', async ({ browser, baseURL }) => {
   await p.click('button:has-text("Dados")'); await p.click('button:has-text("Começar do zero")'); await p.click('.icon-btn[aria-label="Fechar"]')
   await p.click('.nav-item[aria-label="Assinaturas"]'); await p.click('[role=tab]:has-text("Parcelas")'); await p.click('button:has-text("Nova parcela")')
   await p.fill('input[placeholder="Ex.: iPhone 15"]', 'iPhone 15'); await p.fill('input[placeholder="0,00"]', '250'); await p.fill('input[placeholder="12"]', '12'); await p.fill('form input[type=date] >> nth=0', '2026-03-10'); await p.click('form button.btn.primary')
-  await p.click('.details-btn'); await p.screenshot({ path: 'detail-before.png' })
+  await p.click('.details-btn'); 
   // só parcelas pagas têm botão
   assert.strictEqual(await p.locator('button[aria-label^="Anexar comprovante"]').count(), 6)
   // PDF na parcela 2, foto na 1
@@ -31,7 +31,7 @@ test('comprovantes no modo local (IndexedDB)', async ({ browser, baseURL }) => {
   await p.waitForSelector('button[aria-label="Ver comprovante da parcela 2"]')
   const metas = await ls('fd:receipts'); console.log('metas:', metas.map((m) => `${m.k}:${m.mime}:${m.path.slice(0, 12)}`).join(' '))
   assert.strictEqual(metas.length, 2); assert(metas.find((m) => m.k === 0).mime === 'image/jpeg' && metas.find((m) => m.k === 1).mime === 'application/pdf')
-  await p.screenshot({ path: 'detail-after.png' })
+  
   // ver imagem
   await p.click('button[aria-label="Ver comprovante da parcela 1"]'); await p.waitForSelector('img.receipt-img')
   assert(await p.evaluate(() => { const i = document.querySelector('img.receipt-img'); return i.complete && i.naturalWidth > 0 })); console.log('imagem local abre')

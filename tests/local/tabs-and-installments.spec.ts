@@ -55,7 +55,7 @@ test('abas por URL e parcelas viram despesas', async ({ browser, baseURL }) => {
   await p.fill('input[placeholder="Ex.: iPhone 15"]', 'iPhone 15'); await p.fill('input[placeholder="0,00"]', '250'); await p.fill('input[placeholder="12"]', '12')
   await p.fill('form input[type=date] >> nth=0', '2026-03-10')
   console.log('checkbox label:', (await p.locator('label.check').textContent()))
-  await p.screenshot({ path: 'inst-form2.png' })
+  
   await p.click('form button.btn.primary'); await p.waitForTimeout(400)
   let txs = await get('fd:txs'); console.log('expenses:', txs.map((t) => `${t.date} ${t.description} ${t.category}`).sort().join(' | '))
   assert.strictEqual(txs.length, 6); assert(txs.every((t) => t.type === 'expense' && t.category === 'compras' && t.amount === 250))
@@ -97,9 +97,9 @@ test('abas por URL e parcelas viram despesas', async ({ browser, baseURL }) => {
   // Visão geral reflete despesas
   await p.click('.nav-item[aria-label="Visão geral"]'); await p.waitForTimeout(400)
   console.log('overview despesas card:', (await txt('.stat >> nth=2')))
-  await p.screenshot({ path: 'tabs-overview.png' })
-  await p.click('.nav-item[aria-label="Assinaturas"]'); await p.screenshot({ path: 'tabs-subs.png' })
-  await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300); await p.screenshot({ path: 'tabs-mobile.png' })
+  
+  await p.click('.nav-item[aria-label="Assinaturas"]'); 
+  await p.setViewportSize({ width: 390, height: 844 }); await p.waitForTimeout(300); 
   console.log('errors', errs); console.log('ALL OK'); 
 
 })

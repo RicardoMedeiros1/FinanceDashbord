@@ -428,3 +428,24 @@ main > .tabs { align-self: flex-start; }
 .forecast-cash { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin: 0; line-height: 1.5; }
 .forecast .link { align-self: flex-start; }
 .nav-label { text-align: center; line-height: 1.1; }
+
+/* importação de extrato */
+.file-drop { display: flex; align-items: center; justify-content: center; gap: 10px; border: 1px dashed #444; border-radius: 14px; padding: 26px; cursor: pointer; color: var(--muted); }
+.file-drop:hover { border-color: var(--accent); color: var(--text); }
+.file-drop input { display: none; }
+.import { display: flex; flex-direction: column; gap: 12px; }
+.import-table { max-height: 46vh; overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
+.import-table table { font-size: 13px; }
+.import-table td, .import-table th { padding: 8px 10px; }
+.import-table tr.skip { opacity: 0.55; }
+.import-table select { width: auto; max-width: 150px; padding: 4px 8px; font-size: 12px; }
+.import-actions { display: flex; gap: 14px; }
+.import-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.badge { margin-left: 8px; padding: 2px 8px; border-radius: 99px; font-size: 11px; background: var(--surface-2); color: var(--muted); white-space: nowrap; }
+.badge.maybe { background: rgba(224, 163, 15, 0.16); color: var(--amber); }
+.badge.imported, .badge.invoice { background: rgba(138, 138, 138, 0.18); }
+.modal:has(.import) { max-width: 760px; }
+.import .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.import label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 13px; }
+.import-table td:nth-child(2) { white-space: nowrap; }
+@media (max-width: 760px) { .import .row { grid-template-columns: 1fr; } }

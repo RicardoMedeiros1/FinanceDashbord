@@ -1,15 +1,18 @@
-import { Paperclip, Pencil, Plus, Repeat, Search, Trash2 } from 'lucide-react'
+import { Paperclip, Pencil, Plus, Repeat, Search, Trash2, Upload } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { CATEGORIES } from '../categories'
 import { Tabs } from '../components/Tabs'
 import { brl, CYCLE_LABEL, formatDate, monthKey, monthLong, nextOccurrence, sumBy } from '../lib'
-import type { Card, Recurring, Transaction } from '../types'
+import { ImportModal } from '../components/ImportModal'
+import type { Account, Card, Recurring, Transaction } from '../types'
 
 type Filter = 'all' | 'income' | 'expense'
 
 export type TxView = 'list' | 'recurring'
 
 interface Props {
+  accounts: Account[]
+  onImport: (list: Transaction[]) => void
   cards: Card[]
   receiptIds: Set<string>
   onOpenReceipt: (id: string) => void
@@ -26,7 +29,8 @@ interface Props {
 
 const tagStyle = (color: string) => ({ '--c': color }) as React.CSSProperties
 
-export function Transactions({ cards, receiptIds, onOpenReceipt, view, onView, txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
+export function Transactions({ accounts, onImport, cards, receiptIds, onOpenReceipt, view, onView, txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
+  const [importing, setImporting] = useState(false)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const [month, setMonth] = useState(monthKey(new Date()))
@@ -61,6 +65,9 @@ export function Transactions({ cards, receiptIds, onOpenReceipt, view, onView, t
         />
         {view === 'recurring' && (
           <button className="btn primary" onClick={onNewRecurring}><Plus size={16} /> Nova recorrente</button>
+        )}
+        {view === 'list' && (
+          <button className="btn" onClick={() => setImporting(true)}><Upload size={16} /> Importar extrato</button>
         )}
       </div>
 
@@ -146,6 +153,7 @@ export function Transactions({ cards, receiptIds, onOpenReceipt, view, onView, t
           )}
         </ul>
       )}
+      {importing && <ImportModal txs={txs} cards={cards} accounts={accounts} onImport={onImport} onClose={() => setImporting(false)} />}
     </div>
   )
 }

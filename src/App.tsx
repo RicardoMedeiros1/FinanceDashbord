@@ -335,6 +335,13 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
         )}
         {page === 'transactions' && (
           <Transactions
+            accounts={accounts}
+            onImport={(list) =>
+              setTxs((l) => {
+                const ids = new Set(l.map((t) => t.id))
+                return [...list.filter((t) => !ids.has(t.id)), ...l]
+              })
+            }
             cards={cards}
             txs={txs}
             rules={rules}

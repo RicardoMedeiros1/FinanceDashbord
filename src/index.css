@@ -475,3 +475,7 @@ main > .tabs { align-self: flex-start; }
 .bank-form { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
 .bank-form h4 { margin: 0 0 4px; font-size: 14px; }
 .bank-result ul { max-height: 260px; overflow-y: auto; }
+
+/* gráficos: sem o contorno branco ao clicar (o foco do teclado do recharts) */
+.recharts-wrapper, .recharts-wrapper *, .recharts-surface { outline: none !important; -webkit-tap-highlight-color: transparent; }
+.recharts-wrapper svg *:focus, .recharts-wrapper svg:focus { outline: none !important; }

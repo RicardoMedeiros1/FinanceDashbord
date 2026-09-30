@@ -38,7 +38,7 @@ export function Budgets({ txs, subs, budgets, onChange }: { txs: Transaction[]; 
           </div>
           <div className="chart-fill short">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={chartData} margin={{ top: 24, left: 8, right: 8 }}>
+              <ComposedChart accessibilityLayer={false} data={chartData} margin={{ top: 24, left: 8, right: 8 }}>
                 <XAxis dataKey="name" stroke="#6b6b6b" tickLine={false} axisLine={false} fontSize={12} />
                 <Bar dataKey="value" fill="#e84a45" radius={[10, 10, 0, 0]} maxBarSize={90}>
                   <LabelList dataKey="value" position="top" fill="#e9e9e9" fontSize={12} formatter={(v) => brl(Number(v))} />

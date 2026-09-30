@@ -103,3 +103,20 @@ test('sem nuvem não há conexão com bancos (precisa do servidor)', async ({ br
   await expect(p.locator('.sidebar')).toBeVisible()
   await expect(p.getByRole('button', { name: 'Bancos (Open Finance)' })).toHaveCount(0)
 })
+
+test('clicar nos gráficos não deixa contorno branco de foco', async ({ browser, baseURL }) => {
+  const { p } = await device(browser, baseURL)
+  await p.goto('./')
+  const chart = p.locator('.chart-fill .recharts-wrapper')
+  await expect(chart).toBeVisible()
+  const box = (await chart.boundingBox())!
+  for (const [x, y] of [[0.3, 0.6], [0.5, 0.8], [0.7, 0.5]]) await p.mouse.click(box.x + box.width * x, box.y + box.height * y)
+  const outlines = await p.evaluate(() => {
+    const els = [document.activeElement, ...document.querySelectorAll('.recharts-wrapper, .recharts-wrapper svg, .recharts-wrapper svg *')] as Element[]
+    return els.filter((e) => e && (getComputedStyle(e).outlineStyle !== 'none' && parseFloat(getComputedStyle(e).outlineWidth) > 0)).map((e) => e.tagName)
+  })
+  expect(outlines).toEqual([])
+  // o foco não vai para o gráfico (era ele que desenhava o contorno branco) e o Tab não entra nele
+  expect(await p.evaluate(() => document.activeElement?.tagName)).toBe('BODY')
+  expect(await p.locator('.recharts-wrapper [tabindex="0"]').count()).toBe(0)
+})

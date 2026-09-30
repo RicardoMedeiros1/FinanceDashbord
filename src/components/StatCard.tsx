@@ -30,7 +30,7 @@ export function StatCard({ label, icon, value, spark, color, delta, invert, foot
         <div className="stat-value">{value}</div>
         <div className="spark">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} barCategoryGap={2}>
+            <BarChart accessibilityLayer={false} data={data} barCategoryGap={2}>
               <YAxis hide domain={[0, max]} />
               <Bar dataKey="v" radius={[2, 2, 0, 0]} isAnimationActive={false}>
                 {data.map((_, i) => (

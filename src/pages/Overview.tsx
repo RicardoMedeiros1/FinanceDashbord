@@ -116,7 +116,7 @@ export function Overview({ onboarding, txs, subs, installments, cards, accounts,
             </div>
             <div className="chart-fill">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chart} barGap={1} barCategoryGap={range === '30d' ? '18%' : '30%'}>
+                <BarChart accessibilityLayer={false} data={chart} barGap={1} barCategoryGap={range === '30d' ? '18%' : '30%'}>
                   <CartesianGrid stroke="#1f1f1f" vertical={false} />
                   <XAxis dataKey="name" stroke="#6b6b6b" tickLine={false} axisLine={false} interval={range === '30d' ? 4 : 0} fontSize={11} />
                   <YAxis stroke="#6b6b6b" tickLine={false} axisLine={false} tickFormatter={(n: number) => (valuesHidden() ? '' : brlShort(n))} width={62} fontSize={11} />

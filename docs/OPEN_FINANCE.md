@@ -29,11 +29,10 @@ Finn (navegador) ──login──▶ Função "pluggy" no Supabase ──chave 
 Segundo o [README do Meu Pluggy](https://github.com/pluggyai/meu-pluggy):
 
 1. Crie uma conta no [Dashboard da Pluggy](https://dashboard.pluggy.ai) (começa com 15 dias de teste; depois disso você continua podendo puxar as informações, segundo o projeto).
-2. Em **Customize** da sua aplicação, inclua o conector **MeuPluggy** na lista.
-3. Crie uma **Development Application**: ela gera o **Client ID** e o **Client Secret**. Guarde os dois (o secret só se vê uma vez).
-4. Abra a aplicação **Demo** do dashboard e faça o vínculo com o Meu Pluggy (autorização OAuth). **Repita uma vez para cada banco** conectado no Meu Pluggy.
-5. Ao concluir, o Demo mostra o resultado com o **Item ID** da conexão: uma sequência como `3fa85f64-5717-4562-b3fc-2c963f66afa6`. Copie um Item ID para cada banco.
-   Se não achar o Item ID, pergunte no [Discord do Meu Pluggy](https://discord.gg/EanrwJADby) ou consulte a [documentação](https://docs.pluggy.ai).
+2. Em **Dados Financeiros → Customização → Conectores**, confira que **(200) MeuPluggy** está ligado (vem ligado por padrão).
+3. Em **Aplicações**, use a aplicação de **Desenvolvimento** (ex.: *Pluggy Demo App*) ou crie uma com **Novo**. Ela mostra o **Client ID** (botão de copiar) e o **Client Secret** (ícone do olho). Guarde os dois; o secret nunca deve ser colado em chat, print ou GitHub.
+4. Ainda em **Aplicações**, clique no **▷** da aplicação (abre o Demo) → **Conectar Conta** → escolha **MeuPluggy** (não o banco: contas de teste só conectam conectores de teste) → **Conectar** → na janela do Meu Pluggy marque a conta do banco e **Autorize**. **Repita uma vez para cada banco** conectado no Meu Pluggy (o banco precisa já estar conectado em meu.pluggy.ai, senão a lista vem vazia).
+5. O item aparece em **Itens Conectados** (status *Atualizado*). Na página dele, logo abaixo do nome **MeuPluggy**, está o **Item ID**: uma sequência como `3fa85f64-5717-4562-b3fc-2c963f66afa6`, com um botão de copiar. Copie um Item ID para cada banco. Itens *Desatualizado / USER INPUT TIMEOUT* são tentativas que falharam: apague-os (lixeira) e use só os *Atualizado*.
 
 ## 3. Publicar a função no Supabase
 

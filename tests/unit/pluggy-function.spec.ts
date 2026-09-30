@@ -38,21 +38,24 @@ async function startFake() {
           ],
         })
       }
-      if (u.pathname === '/transactions') {
+      if (u.pathname === '/transactions') return send(410, { message: 'This endpoint is deprecated. Use GET /v2/transactions with cursor pagination instead.' })
+      if (u.pathname === '/v2/transactions') {
         if (state.rateLimit > 0) {
           state.rateLimit--
           return send(429, { message: 'Too many requests' })
         }
         if (state.txFail) return send(state.txFail.status, { message: state.txFail.message })
         const acc = u.searchParams.get('accountId')
-        const page = Number(u.searchParams.get('page'))
+        const after = u.searchParams.get('after')
         const t = (id: string, type: string, amount: number, extra: Record<string, unknown> = {}) => ({ id, date: '2026-09-10T00:00:00.000Z', description: 'Padaria', descriptionRaw: null, type, amount, category: 'Eating out', status: 'POSTED', creditCardMetadata: null, ...extra })
         const all: Record<string, unknown[][]> = {
           a1: [[t('t1', 'DEBIT', -32.5), t('t2', 'CREDIT', 5000, { description: 'SALARIO' })], [t('t3', 'DEBIT', -10, { status: 'PENDING' })]],
           c1: [[t('t4', 'DEBIT', 150, { creditCardMetadata: { installmentNumber: 2, totalInstallments: 6 } }), t('t5', 'CREDIT', -900, { description: 'Pagamento recebido' })]],
         }
         const pages = all[acc ?? ''] ?? [[]]
-        return send(200, { results: pages[page - 1] ?? [], page, total: 9, totalPages: pages.length })
+        const idx = after ? Number(after.replace('cur', '')) : 0 // o cursor é opaco para o cliente
+        const next = idx + 1 < pages.length ? `${base}/v2/transactions?accountId=${acc}&dateFrom=x&after=cur${idx + 1}` : null
+        return send(200, { results: pages[idx] ?? [], next })
       }
       send(404, {})
     })
@@ -132,8 +135,9 @@ test('sincroniza contas, cartão e transações no formato simples do app', asyn
 
     // usa a chave da API só do lado do servidor e o período pedido
     expect(f.seen.filter((s) => s.url.startsWith('/accounts')).every((s) => s.key === 'KEY')).toBe(true)
-    expect(f.seen.some((s) => s.url.includes('from=2026-08-01') && s.url.includes('accountId=a1') && s.url.includes('pageSize=500'))).toBe(true)
-    expect(f.seen.filter((s) => s.url.startsWith('/transactions')).every((s) => !s.url.includes('to='))).toBe(true)
+    expect(f.seen.some((s) => s.url.startsWith('/v2/transactions') && s.url.includes('dateFrom=2026-08-01') && s.url.includes('accountId=a1'))).toBe(true)
+    expect(f.seen.some((s) => s.url.startsWith('/transactions'))).toBe(false) // o endereço antigo (410) não é mais usado
+    expect(f.seen.some((s) => s.url.includes('after=cur1'))).toBe(true) // seguiu o cursor da segunda página
     expect(JSON.stringify(j)).not.toContain('sec')
     expect(JSON.stringify(j)).not.toContain('KEY')
   } finally {

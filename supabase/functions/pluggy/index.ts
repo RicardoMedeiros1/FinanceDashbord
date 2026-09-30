@@ -189,8 +189,10 @@ export async function handle(req: Request, rawEnv: Env, fetchFn: typeof fetch = 
           dueDate: card ? day(cd.balanceDueDate) : null,
         })
 
+        // a Pluggy descontinuou /transactions (HTTP 410): agora é /v2/transactions, paginado por cursor (`next` traz o `after` da próxima página)
+        let after = ''
         for (let page = 1; page <= MAX_PAGES; page++) {
-          const tr = must(`transações de "${String(a.marketingName || a.name || a.id).slice(0, 30)}"`, await get(`/transactions?accountId=${a.id}&from=${from}&pageSize=500&page=${page}`))
+          const tr = must(`transações de "${String(a.marketingName || a.name || a.id).slice(0, 30)}"`, await get(`/v2/transactions?accountId=${encodeURIComponent(a.id)}&dateFrom=${from}${after ? `&after=${encodeURIComponent(after)}` : ''}`))
           for (const t of (tr.json?.results ?? []) as any[]) {
             const date = day(t.date)
             const amount = num(t.amount)
@@ -213,7 +215,14 @@ export async function handle(req: Request, rawEnv: Env, fetchFn: typeof fetch = 
                   : null,
             })
           }
-          if (page >= (num(tr.json?.totalPages) ?? 1)) break
+          const next = typeof tr.json?.next === 'string' ? tr.json.next : ''
+          if (!next) break
+          try {
+            after = new URL(next, base).searchParams.get('after') ?? ''
+          } catch {
+            after = ''
+          }
+          if (!after) break
         }
       }
     } catch (e) {

@@ -1,6 +1,6 @@
 // Open Finance (Meu Pluggy): transforma o que a função do Supabase devolve em contas, cartões e lançamentos do Finn.
 // Tudo aqui é função pura (sem rede), para poder testar sem banco de verdade.
-import { buildHistory, isInvoicePayment, normDesc, suggestCategory } from './importer'
+import { buildHistory, normDesc, suggestCategory } from './importer'
 import { toISO, uid } from './lib'
 import type { Account, BankLink, Card, CategoryId, Transaction } from './types'
 import type { BankAccount, BankSyncResponse, BankTx } from '../supabase/functions/pluggy/index'
@@ -11,6 +11,12 @@ const COLORS = ['#3b6ef5', '#3ecf6e', '#e0600f', '#8b3ff5', '#f472b6', '#22d3ee'
 
 /** Um Item ID da Pluggy é um UUID. */
 export const isItemId = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.trim())
+
+/**
+ * Pagamento da fatura do cartão feito pela conta. Mais estrito que o do importador de extratos: no Nubank,
+ * "Pagamento efetuado|EMPRESA X" é um pagamento a terceiros (boleto, financiamento...) e é despesa de verdade.
+ */
+export const isCardBillPayment = (description: string) => /pagamento (de |da |do )?fatura|pagto\.? ?(de )?fatura|pgto\.? ?(de )?fatura|fatura (do |de )?cart/.test(normDesc(description))
 
 export const txId = (t: { id: string }) => `pl-${t.id}`
 
@@ -173,7 +179,7 @@ export function planSync({ response, links, accounts, cards, txs, now = new Date
           date: t.date,
           ...(tgt.kind === 'card' ? { cardId: tgt.id } : { accountId: tgt.id }),
         }
-        if (tgt.kind === 'account' && type === 'expense' && isInvoicePayment(t.description)) {
+        if (tgt.kind === 'account' && type === 'expense' && isCardBillPayment(t.description)) {
           plan.skipped.push({ tx, reason: 'invoice' })
           continue
         }

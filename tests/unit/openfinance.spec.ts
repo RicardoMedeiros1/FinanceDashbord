@@ -146,3 +146,20 @@ test('o saldo da conta no app fecha com o do banco (depois de registrar a fatura
   const paid = [{ id: 'tr1', date: '2026-09-12', from: acc.id, amount: 900, note: 'Fatura', kind: 'invoice' as const, cardId: state.cards[0].id, invoiceKey: '2026-09' }]
   expect(accountBalance(acc, state.txs, paid, state.accounts, today)).toBe(1250)
 })
+
+test('só "pagamento de fatura" vira aviso; "Pagamento efetuado|EMPRESA" é despesa comum', () => {
+  n = 0
+  const resp = {
+    items: [item()],
+    accounts: [acct()],
+    transactions: [
+      tx('p1', 'acc-1', '2026-09-15', 'Pagamento efetuado|ECEM SOLUCOES INTEGRADAS LTDA', 269.79, 'out'),
+      tx('p2', 'acc-1', '2026-09-08', 'Pagamento efetuado|BANCO PAN SA - AUTO PAN', 1479.02, 'out'),
+      tx('p3', 'acc-1', '2026-09-04', 'Pagamento de fatura', 2048.05, 'out'),
+      tx('p4', 'acc-1', '2026-09-05', 'Pagto fatura cartao', 10, 'out'),
+    ],
+  }
+  const p = planSync({ response: resp as never, links: [link()], accounts: [], cards: [], txs: [], now: NOW, newId })
+  expect(p.txs.map((t) => t.id).sort()).toEqual(['pl-p1', 'pl-p2'])
+  expect(p.skipped.map((s) => s.tx.id).sort()).toEqual(['pl-p3', 'pl-p4'])
+})

@@ -466,3 +466,11 @@ main > .tabs { align-self: flex-start; }
 .doc p { margin: 8px 0; }
 .doc .back { margin-bottom: 4px; text-decoration: none; }
 .icon-btn[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+
+/* bancos (Open Finance) */
+.bank-list { margin: 8px 0; }
+.bank-list li { align-items: flex-start; }
+.bank-list .grow { display: flex; flex-direction: column; gap: 2px; }
+.bank-result { display: flex; flex-direction: column; gap: 6px; margin: 12px 0; padding: 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.bank-form { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.bank-form h4 { margin: 0 0 4px; font-size: 14px; }

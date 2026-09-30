@@ -123,6 +123,17 @@ export function createSupabaseAuth(url: string, key: string): Auth {
       if (error) throw new Error('Não foi possível excluir a conta agora. Tente de novo mais tarde.')
       await client.auth.signOut()
     },
+    async bankSync(req) {
+      const { data, error } = await client.functions.invoke('pluggy', { body: req })
+      if (error) {
+        const status = (error as { context?: { status?: number } }).context?.status
+        if (status === 404) throw new Error('A função "pluggy" não está publicada no Supabase. Veja docs/OPEN_FINANCE.md, passo 3.')
+        if (status === 401) throw new Error('Sessão expirada. Saia e entre de novo.')
+        throw new Error('Não foi possível falar com o servidor agora. Tente de novo.')
+      }
+      if (data && typeof data === 'object' && 'error' in data) throw new Error(String((data as { message?: string }).message ?? 'Não foi possível sincronizar.'))
+      return data
+    },
     onChange(cb) {
       const { data } = client.auth.onAuthStateChange((_event, session) => cb(toSession(session)))
       return () => data.subscription.unsubscribe()

@@ -1,3 +1,5 @@
+import type { BankSyncResponse } from '../openfinance'
+
 /** Uma linha da tabela `records`: qualquer item do app (transação, assinatura, meta...). */
 export interface Row {
   collection: string
@@ -34,6 +36,8 @@ export interface Auth {
   onRecovery(cb: (kind: 'recovery' | 'invite') => void): () => void
   /** Exclui a conta do usuário logado e todos os dados dela (irreversível). */
   deleteAccount(): Promise<void>
+  /** Pede à função do servidor (Open Finance / Meu Pluggy) as contas e transações das conexões informadas. */
+  bankSync(req: { action: 'sync'; items: string[]; from?: string }): Promise<BankSyncResponse>
   onChange(cb: (s: Session | null) => void): () => void
   remote(userId: string): Remote
 }

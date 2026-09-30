@@ -96,3 +96,10 @@ test('página de privacidade e termos abre e volta ao app', async ({ browser, ba
   await p.click('a:has-text("Voltar")')
   await expect(p.locator('.sidebar')).toBeVisible()
 })
+
+test('sem nuvem não há conexão com bancos (precisa do servidor)', async ({ browser, baseURL }) => {
+  const { p } = await device(browser, baseURL)
+  await p.goto('./')
+  await expect(p.locator('.sidebar')).toBeVisible()
+  await expect(p.getByRole('button', { name: 'Bancos (Open Finance)' })).toHaveCount(0)
+})

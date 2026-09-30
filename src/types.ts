@@ -100,11 +100,25 @@ export interface Card {
   paid?: string[] // faturas marcadas como pagas (chave = mês do fechamento, yyyy-mm)
 }
 
+/** Conexão com um banco via Open Finance (Meu Pluggy). O `id` é o Item ID da Pluggy. */
+export interface BankLink {
+  id: string
+  label: string // como o usuário chama o banco, ex.: "Nubank"
+  since: string // yyyy-mm-dd: histórico importado a partir desta data
+  lastSync?: string // ISO
+  status?: string // situação da conexão na Pluggy (UPDATED, LOGIN_ERROR...)
+  /** para cada conta/cartão da Pluggy: a que conta/cartão do Finn corresponde (ou 'ignore') */
+  map: Record<string, { kind: 'account' | 'card' | 'ignore'; id?: string }>
+  /** saldo informado pelo banco na última sincronização (só contas) */
+  balances?: Record<string, number>
+}
+
 /** Perfil do usuário (um único registro, id 'me'). */
 export interface Profile {
   id: string
   name: string
   onboardingHidden?: boolean
+  banks?: BankLink[]
 }
 
 /** Conta (corrente, carteira, poupança...). O saldo é: saldo inicial + o que entrou e saiu desde a data inicial. */

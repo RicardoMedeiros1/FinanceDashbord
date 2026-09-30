@@ -1,6 +1,6 @@
 import { ArrowLeft } from 'lucide-react'
 
-const UPDATED = '30/09/2026'
+const UPDATED = '01/10/2026'
 
 /** Termos de uso e política de privacidade. Página pública (abre mesmo sem login). */
 export function PrivacyPage() {
@@ -18,6 +18,7 @@ export function PrivacyPage() {
         <li><strong>Conta:</strong> seu e-mail e a sua senha (a senha é guardada apenas de forma protegida, nunca em texto legível).</li>
         <li><strong>O que você digita ou importa:</strong> lançamentos, assinaturas, parcelas, contas, cartões, metas, orçamentos e o nome do perfil.</li>
         <li><strong>Comprovantes:</strong> as fotos e PDFs que você anexa às parcelas.</li>
+        <li><strong>Dados do banco (opcional):</strong> se você conectar um banco pelo Open Finance (Meu Pluggy), o app busca contas, cartões e transações e os guarda na sua conta, como qualquer outro lançamento. Isso só acontece com a sua autorização, que você pode revogar no Meu Pluggy e no seu banco a qualquer momento; a conexão é usada só por quem o administrador liberar.</li>
       </ul>
       <p>O Finn <strong>não</strong> coleta localização, contatos nem dados de navegação, não usa anúncios ou rastreadores e não vende nem compartilha os seus dados com terceiros. Os extratos que você importa são lidos no seu navegador; só os lançamentos que você confirma são salvos.</p>
 

@@ -1,8 +1,9 @@
-import { Database, Eye, EyeOff, Plus } from 'lucide-react'
+import { Database, Eye, EyeOff, Landmark, Plus } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { cloudReceiptStore, localReceiptStore, prepareFile, type ReceiptMeta } from './cloud/receipts'
 import { applyChanges, COLS, countLocal, SyncEngine, type Change, type Col, type Collections, type SyncStatus } from './cloud/sync'
 import type { Auth } from './cloud/types'
+import { BankModal, type BankState } from './components/BankModal'
 import { DataModal } from './components/DataModal'
 import { InstallmentDetail } from './components/InstallmentDetail'
 import { Onboarding, type OnboardingStep } from './components/Onboarding'
@@ -11,6 +12,7 @@ import { ReceiptViewer } from './components/ReceiptViewer'
 import { Sidebar } from './components/Sidebar'
 import { SyncBadge } from './components/SyncBadge'
 import { TransactionForm } from './components/TransactionForm'
+import { needsAutoSync, planSync, syncRequest } from './openfinance'
 import { seedBudgets, seedGoals, seedSubscriptions, seedTransactions } from './data'
 import { applyInstallments, applyRecurring, applySubscriptions, initialChargedUntil, installmentStatus, missingInstallmentTxs, setHideValues, skipToToday, uid } from './lib'
 import { Assistant } from './pages/Assistant'
@@ -19,7 +21,7 @@ import { Overview } from './pages/Overview'
 import { Subscriptions, type SubsTab } from './pages/Subscriptions'
 import { Transactions, type TxView } from './pages/Transactions'
 import { Cards, type CardsTab } from './pages/Cards'
-import type { Account, Budget, Card, CategoryId, Cycle, Goal, Installment, Page, Profile, Recurring, Subscription, Transaction, Transfer } from './types'
+import type { Account, BankLink, Budget, Card, CategoryId, Cycle, Goal, Installment, Page, Profile, Recurring, Subscription, Transaction, Transfer } from './types'
 import { useStored } from './useStored'
 
 const TITLES: Record<Page, { title: string; subtitle: string }> = {
@@ -80,6 +82,12 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
   const me = profile.find((p) => p.id === 'me')
   const profileName = me?.name ?? ''
   const patchProfile = (patch: Partial<Profile>) => setProfile((l) => [{ ...(l.find((p) => p.id === 'me') ?? { id: 'me', name: '' }), ...patch }])
+  const banks = useMemo(() => me?.banks ?? [], [me])
+  const updateBanks = (fn: (l: BankLink[]) => BankLink[]) =>
+    setProfile((l) => {
+      const cur = l.find((p) => p.id === 'me') ?? { id: 'me', name: '' }
+      return [{ ...cur, banks: fn(cur.banks ?? []) }]
+    })
   // Modo privacidade: esconde valores na tela (preferência deste aparelho)
   const [hidden, setHidden] = useState(() => {
     try {
@@ -309,6 +317,53 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     setAccounts((l) => l.filter((a) => a.id !== id))
   }
 
+  // ---------- bancos (Open Finance / Meu Pluggy) ----------
+  const [bankOpen, setBankOpen] = useState(false)
+  const [bankState, setBankState] = useState<BankState>({ busy: false, error: '', result: null })
+  const bankBusy = useRef(false)
+  const syncBank = async (list: BankLink[] = banks) => {
+    if (!cloud || list.length === 0 || bankBusy.current) return
+    bankBusy.current = true
+    setBankState((b) => ({ ...b, busy: true, error: '' }))
+    try {
+      const response = await cloud.auth.bankSync(syncRequest(list))
+      const d = dataRef.current
+      const plan = planSync({ response, links: list, accounts: d.accounts, cards: d.cards, txs: d.txs })
+      if (plan.accounts.length) setAccounts((l) => [...l, ...plan.accounts])
+      if (plan.cards.length) setCards((l) => [...l, ...plan.cards])
+      if (plan.txs.length || plan.patches.length)
+        setTxs((l) => {
+          const ids = new Set(l.map((t) => t.id))
+          const patch = new Map(plan.patches.map((p) => [p.id, p]))
+          return [...plan.txs.filter((t) => !ids.has(t.id)), ...l.map((t) => (patch.has(t.id) && !t.accountId && !t.cardId ? { ...t, ...patch.get(t.id) } : t))]
+        })
+      // guarda o que mudou (mapeamentos, saldos), sem desfazer conexões adicionadas/removidas enquanto esperava
+      updateBanks((cur) => cur.map((c) => plan.links.find((n) => n.id === c.id) ?? c))
+      setBankState({ busy: false, error: '', result: plan })
+    } catch (e) {
+      setBankState((b) => ({ ...b, busy: false, error: e instanceof Error ? e.message : 'Não foi possível sincronizar.' }))
+    } finally {
+      bankBusy.current = false
+    }
+  }
+  const addBank = (b: { id: string; label: string; since: string }) => {
+    const link: BankLink = { ...b, map: {} }
+    updateBanks((l) => [...l, link])
+    void syncBank([...banks, link])
+  }
+  const importSkipped = (tx: Transaction) => {
+    setTxs((l) => (l.some((t) => t.id === tx.id) ? l : [tx, ...l]))
+    setBankState((b) => (b.result ? { ...b, result: { ...b.result, skipped: b.result.skipped.filter((s) => s.tx.id !== tx.id) } } : b))
+  }
+  // ao abrir o app, atualiza sozinho se faz mais de 6 horas
+  const autoBank = useRef(false)
+  useEffect(() => {
+    if (!cloud || !syncReady || autoBank.current || banks.length === 0) return
+    autoBank.current = true
+    if (needsAutoSync(banks)) void syncBank()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cloud, syncReady, banks])
+
   const deleteAccountNow = async () => {
     if (!cloud) return
     for (const r of receipts) if (!r.path.startsWith('local:')) await store.remove(r).catch(() => undefined)
@@ -360,6 +415,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
           <div className="topbar-right">
             <button className="icon-btn" onClick={togglePrivacy} aria-label={hidden ? 'Mostrar valores' : 'Ocultar valores'} title={hidden ? 'Mostrar valores' : 'Ocultar valores'} aria-pressed={hidden}>{hidden ? <EyeOff size={16} /> : <Eye size={16} />}</button>
             {cloud && <SyncBadge status={status} onClick={() => void engineRef.current?.sync()} />}
+            {cloud && <button className="icon-btn" onClick={() => setBankOpen(true)} aria-label="Bancos (Open Finance)" title="Bancos (Open Finance)"><Landmark size={16} /></button>}
             <button className="btn ghost" onClick={() => setDataOpen(true)}><Database size={15} /> Dados</button>
             <button className="btn light" onClick={() => setForm({})}><Plus size={16} /> Nova transação</button>
           </div>
@@ -489,6 +545,19 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
         </Modal>
       )}
 
+      {bankOpen && cloud && (
+        <BankModal
+          links={banks}
+          accounts={accounts}
+          cards={cards}
+          state={bankState}
+          onAdd={addBank}
+          onRemove={(id) => updateBanks((l) => l.filter((b) => b.id !== id))}
+          onSync={() => void syncBank()}
+          onImportSkipped={importSkipped}
+          onClose={() => setBankOpen(false)}
+        />
+      )}
       {dataOpen && (
         <DataModal
           profileName={profileName}

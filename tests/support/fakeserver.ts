@@ -4,7 +4,18 @@ import { URL } from 'node:url'
 export interface FakeCloud {
   rows: Map<string, any>
   files: Map<string, { buf: Buffer; type: string }>
-  state: { offline: boolean; seq: number; version: number; fetches: string[]; upserts: number; password: string; resets: string[]; deleted: boolean }
+  state: {
+    offline: boolean
+    seq: number
+    version: number
+    fetches: string[]
+    upserts: number
+    password: string
+    resets: string[]
+    deleted: boolean
+    /** simula a função "pluggy": `data` é o que a Pluggy tem; `error` faz a função responder com esse erro */
+    pluggy: { data: any; error: string; requests: any[] }
+  }
   close(): Promise<void>
 }
 
@@ -12,7 +23,7 @@ export interface FakeCloud {
 export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
   const rows = new Map<string, any>()
   const files = new Map<string, { buf: Buffer; type: string }>()
-  const state = { offline: false, seq: 0, version: 0, fetches: [] as string[], upserts: 0, password: 'pw', resets: [] as string[], deleted: false }
+  const state = { offline: false, seq: 0, version: 0, fetches: [] as string[], upserts: 0, password: 'pw', resets: [] as string[], deleted: false, pluggy: { data: null as any, error: '', requests: [] as any[] } }
 
   const srv = http.createServer((req, res) => {
     const u = new URL(req.url ?? '/', `http://localhost:${port}`)
@@ -53,6 +64,18 @@ export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
         files.clear()
         state.deleted = true
         return send(200, { ok: true })
+      }
+      if (path === '/pluggy') {
+        const b = JSON.parse(body.toString())
+        state.pluggy.requests.push(b)
+        if (state.pluggy.error) return send(200, { error: 'not_configured', message: state.pluggy.error })
+        const d = state.pluggy.data ?? { items: [], accounts: [], transactions: [] }
+        const ids: string[] = b.items ?? []
+        return send(200, {
+          items: ids.map((id) => d.items.find((i: any) => i.id === id) ?? { id, connector: '', status: 'NOT_FOUND', updatedAt: null, error: 'not_found' }),
+          accounts: d.accounts.filter((a: any) => ids.includes(a.itemId)),
+          transactions: d.transactions.filter((t: any) => ids.includes(t.itemId)),
+        })
       }
       if (path === '/password') {
         state.password = JSON.parse(body.toString()).password

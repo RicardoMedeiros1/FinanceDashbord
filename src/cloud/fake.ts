@@ -72,6 +72,14 @@ export function createFakeAuth(base: string): Auth {
       localStorage.removeItem(KEY)
       emit()
     },
+    async bankSync(req) {
+      const r = await fetch(q(read()?.token ?? '', '/pluggy'), { method: 'POST', body: JSON.stringify(req) }).catch(() => null)
+      if (!r) throw new Error('Sem conexão com o servidor. Verifique a internet.')
+      const j = await r.json().catch(() => null)
+      if (!r.ok) throw new Error('Não foi possível falar com o servidor agora. Tente de novo.')
+      if (j && 'error' in j) throw new Error(String(j.message ?? 'Não foi possível sincronizar.'))
+      return j
+    },
     onChange(cb) {
       listeners.add(cb)
       return () => void listeners.delete(cb)

@@ -1,12 +1,13 @@
-import { PiggyBank, TrendingUp } from 'lucide-react'
+import { BookOpen, PiggyBank, TrendingUp } from 'lucide-react'
 import { useState } from 'react'
+import { ConceptsTab } from '../components/ConceptsTab'
 import { ReserveTab } from '../components/ReserveTab'
 import { SimulatorTab, type SimSeed } from '../components/SimulatorTab'
 import { Tabs } from '../components/Tabs'
 import type { ReserveSettings } from '../reserve'
-import type { Account, Transaction, Transfer } from '../types'
+import type { Account, Installment, Page, Transaction, Transfer } from '../types'
 
-export type InvestTab = 'reserve' | 'simulator'
+export type InvestTab = 'reserve' | 'simulator' | 'concepts'
 
 interface Props {
   tab: InvestTab
@@ -14,12 +15,15 @@ interface Props {
   txs: Transaction[]
   accounts: Account[]
   transfers: Transfer[]
+  installments: Installment[]
   reserve?: ReserveSettings
   onReserve: (s: ReserveSettings) => void
+  onGo: (p: Page, sub?: string) => void
 }
 
-export function Invest({ tab, onTab, txs, accounts, transfers, reserve, onReserve }: Props) {
+export function Invest({ tab, onTab, txs, accounts, transfers, installments, reserve, onReserve, onGo }: Props) {
   const [seed, setSeed] = useState<SimSeed>({ initial: 0, monthly: 0, months: 12 })
+  const [focus, setFocus] = useState<string | null>(null) // conceito aberto pelo "?" do simulador
   const [run, setRun] = useState(0) // muda quando vem da reserva, para o simulador recomeçar com os valores novos
 
   return (
@@ -31,6 +35,7 @@ export function Invest({ tab, onTab, txs, accounts, transfers, reserve, onReserv
         tabs={[
           { id: 'reserve', label: 'Reserva de emergência', icon: <PiggyBank size={13} /> },
           { id: 'simulator', label: 'Simulador', icon: <TrendingUp size={13} /> },
+          { id: 'concepts', label: 'Conceitos', icon: <BookOpen size={13} /> },
         ]}
       />
       {tab === 'reserve' ? (
@@ -46,8 +51,10 @@ export function Invest({ tab, onTab, txs, accounts, transfers, reserve, onReserv
             onTab('simulator')
           }}
         />
+      ) : tab === 'simulator' ? (
+        <SimulatorTab key={run} seed={seed} onLearn={(id) => { setFocus(id); onTab('concepts') }} />
       ) : (
-        <SimulatorTab key={run} seed={seed} />
+        <ConceptsTab txs={txs} accounts={accounts} transfers={transfers} installments={installments} reserve={reserve} focus={focus} onTab={(t) => { setFocus(null); onTab(t) }} onGo={onGo} />
       )}
     </div>
   )

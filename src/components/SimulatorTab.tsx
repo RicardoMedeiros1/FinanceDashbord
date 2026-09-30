@@ -1,9 +1,9 @@
-import { Info, RefreshCw } from 'lucide-react'
+import { CircleHelp, Info, RefreshCw } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { brl, brlShort, valuesHidden } from '../lib'
-import { buildProducts, DEFAULT_PARAMS, DEFAULT_RATES, fetchRates, parseNumber, simulate, type ProductParams, type Rates } from '../invest'
-import { useStored } from '../useStored'
+import { buildProducts, fetchRates, parseNumber, simulate, type ProductParams, type Rates } from '../invest'
+import { useInvestStored } from '../investStore'
 
 export interface SimSeed {
   initial: number
@@ -11,19 +11,19 @@ export interface SimSeed {
   months: number
 }
 
-interface Stored {
-  rates: Rates
-  params: ProductParams
-  updated: string // data da última atualização pelo Banco Central ('' = valores de exemplo)
-}
-
 const HORIZONS = [12, 24, 60, 120]
 const fmt = (n: number) => String(n).replace('.', ',')
+
+function Learn({ id, label, onLearn }: { id: string; label: string; onLearn?: (id: string) => void }) {
+  if (!onLearn) return null
+  return <button type="button" className="learn" onClick={() => onLearn(id)} aria-label={`Entender: ${label}`} title={`O que é ${label}?`}><CircleHelp size={13} /></button>
+}
+const LEARN: Record<string, string> = { poupanca: 'poupanca', cdb_liquidez: 'cdb', cdb_prazo: 'cdb', lci: 'lci-lca', tesouro_selic: 'tesouro-selic', tesouro_ipca: 'tesouro-ipca' }
 const tooltipStyle = { background: '#1c1c1c', border: '1px solid #2a2a2a', borderRadius: 10, color: '#f5f5f5' }
 
 /** Simulador educativo: compara renda fixa com imposto e inflação; as taxas podem ser atualizadas pelo Banco Central. */
-export function SimulatorTab({ seed }: { seed: SimSeed }) {
-  const [saved, setSaved] = useStored<Stored>('fd:invest', () => ({ rates: DEFAULT_RATES, params: DEFAULT_PARAMS, updated: '' }))
+export function SimulatorTab({ seed, onLearn }: { seed: SimSeed; onLearn?: (id: string) => void }) {
+  const [saved, setSaved] = useInvestStored()
   const { rates, params } = saved
   const [initial, setInitial] = useState(seed.initial ? fmt(seed.initial) : '10000')
   const [monthly, setMonthly] = useState(seed.monthly ? fmt(seed.monthly) : '500')
@@ -96,9 +96,9 @@ export function SimulatorTab({ seed }: { seed: SimSeed }) {
         </div>
         <div className="form">
           <div className="row three">
-            <label>Selic<input inputMode="decimal" value={fmt(rates.selic)} onChange={(e) => setRate('selic', e.target.value)} aria-label="Taxa Selic" /></label>
-            <label>CDI<input inputMode="decimal" value={fmt(rates.cdi)} onChange={(e) => setRate('cdi', e.target.value)} aria-label="Taxa CDI" /></label>
-            <label>Inflação (IPCA 12 meses)<input inputMode="decimal" value={fmt(rates.ipca)} onChange={(e) => setRate('ipca', e.target.value)} aria-label="Inflação IPCA" /></label>
+            <label><span>Selic <Learn id="selic" label="Selic" onLearn={onLearn} /></span><input inputMode="decimal" value={fmt(rates.selic)} onChange={(e) => setRate('selic', e.target.value)} aria-label="Taxa Selic" /></label>
+            <label><span>CDI <Learn id="cdi" label="CDI" onLearn={onLearn} /></span><input inputMode="decimal" value={fmt(rates.cdi)} onChange={(e) => setRate('cdi', e.target.value)} aria-label="Taxa CDI" /></label>
+            <label><span>Inflação (IPCA 12 meses) <Learn id="ipca" label="IPCA" onLearn={onLearn} /></span><input inputMode="decimal" value={fmt(rates.ipca)} onChange={(e) => setRate('ipca', e.target.value)} aria-label="Inflação IPCA" /></label>
           </div>
         </div>
         <p className="muted small" role="status">
@@ -129,7 +129,7 @@ export function SimulatorTab({ seed }: { seed: SimSeed }) {
           <div className="table-wrap">
             <table className="sim-table">
               <thead>
-                <tr><th>Produto</th><th className="right">Valor líquido final</th><th className="right">Rendimento líquido</th><th className="right">Imposto</th><th className="right">Em valores de hoje</th></tr>
+                <tr><th>Produto</th><th className="right">Valor líquido final</th><th className="right">Rendimento líquido</th><th className="right">Imposto <Learn id="ir-regressivo" label="imposto de renda regressivo" onLearn={onLearn} /></th><th className="right">Em valores de hoje</th></tr>
               </thead>
               <tbody>
                 {results.map(({ p, r }) => (
@@ -137,7 +137,7 @@ export function SimulatorTab({ seed }: { seed: SimSeed }) {
                     <td>
                       <span className="dot" style={{ background: p.color }} /> <strong>{p.name}</strong>
                       {p.id === best.p.id && <span className="badge">Maior valor nesta simulação</span>}
-                      <div className="muted small">Liquidez: {p.liquidity} · Risco: {p.risk} · FGC: {p.fgc}</div>
+                      <div className="muted small">Liquidez: {p.liquidity} · Risco: {p.risk} · FGC: {p.fgc} <Learn id={LEARN[p.id]} label={p.name.split(' (')[0]} onLearn={onLearn} /></div>
                     </td>
                     <td className="right" data-testid={`sim-net-${p.id}`}>{brl(r.net)}</td>
                     <td className={`right ${r.gain >= 0 ? 'pos' : ''}`}>{brl(r.gain)}</td>

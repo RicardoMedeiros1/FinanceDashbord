@@ -32,7 +32,7 @@ const TITLES: Record<Page, { title: string; subtitle: string }> = {
   subscriptions: { title: 'Assinaturas e parcelas', subtitle: 'O que renova no cartão e o que você ainda está pagando' },
   cards: { title: 'Cartões e contas', subtitle: 'Saldo das contas, fechamento e fatura de cada cartão' },
   budgets: { title: 'Orçamentos', subtitle: 'Limites de gasto por categoria' },
-  invest: { title: 'Investir', subtitle: 'Reserva de emergência e simulador, para aprender antes de investir' },
+  invest: { title: 'Investir', subtitle: 'Reserva, simulador e conceitos, para aprender antes de investir' },
   assistant: { title: 'Assistente', subtitle: 'Tire dúvidas sobre o seu dinheiro' },
 }
 
@@ -564,8 +564,10 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
         )}
         {page === 'invest' && (
           <Invest
-            tab={(sub === 'simulador' ? 'simulator' : 'reserve') satisfies InvestTab}
-            onTab={(t) => go('invest', t === 'simulator' ? 'simulador' : '')}
+            tab={(sub === 'simulador' ? 'simulator' : sub === 'conceitos' ? 'concepts' : 'reserve') satisfies InvestTab}
+            onTab={(t) => go('invest', t === 'simulator' ? 'simulador' : t === 'concepts' ? 'conceitos' : '')}
+            installments={installments}
+            onGo={go}
             txs={txs}
             accounts={accounts}
             transfers={transfers}

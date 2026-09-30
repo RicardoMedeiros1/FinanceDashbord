@@ -562,3 +562,31 @@ main { min-width: 0; }
 .card-head { flex-wrap: wrap; gap: 8px 12px; }
 .reserve-acc { flex: 1; flex-direction: row; }
 .invest-tab .form + .muted.small { margin-top: 10px; }
+
+/* conceitos */
+.trail { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.trail li { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+.trail li:first-child { border-top: 0; }
+.trail .grow { display: flex; flex-direction: column; gap: 2px; }
+.trail-mark { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border); display: grid; place-items: center; flex: none; color: var(--muted); margin-top: 1px; }
+.trail li.done .trail-mark { background: rgba(62, 207, 110, 0.18); border-color: var(--green); color: var(--green); }
+.concepts { display: flex; flex-direction: column; gap: 10px; }
+.concept { padding: 0; scroll-margin-top: 12px; }
+.concept summary { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; align-items: center; padding: 14px 16px; cursor: pointer; list-style: none; }
+.concept summary::-webkit-details-marker { display: none; }
+.concept summary .muted { grid-column: 1 / -1; }
+.concept[open] summary { border-bottom: 1px solid var(--border); }
+.concept-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; line-height: 1.55; font-size: 14px; }
+.concept-body p { margin: 0; }
+.concept-example { padding: 10px 12px; border-radius: 10px; background: var(--surface-2); }
+.concept-tool { padding: 12px; border: 1px dashed var(--border); border-radius: 12px; display: flex; flex-direction: column; gap: 12px; }
+.concept-tool .row.three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.concept-tool label { display: flex; flex-direction: column; gap: 4px; color: var(--muted); font-size: 12px; }
+.concept-results { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.concept-results div { display: flex; flex-direction: column; gap: 2px; }
+.concept-results strong { font-size: 18px; }
+.concept-foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.learn { display: inline-flex; vertical-align: middle; margin-left: 4px; padding: 2px; border: 0; background: none; color: var(--muted); cursor: pointer; border-radius: 50%; }
+.learn:hover { color: var(--text); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 760px) { .concept-tool .row.three { grid-template-columns: 1fr; } }

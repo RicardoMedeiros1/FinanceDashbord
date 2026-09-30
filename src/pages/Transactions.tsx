@@ -1,16 +1,20 @@
-import { Paperclip, Pencil, Plus, Repeat, Search, Trash2, Upload } from 'lucide-react'
+import { Paperclip, Pencil, PieChart, Plus, Repeat, Search, Trash2, Upload } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { CATEGORIES } from '../categories'
 import { Tabs } from '../components/Tabs'
 import { brl, CYCLE_LABEL, formatDate, monthKey, monthLong, nextOccurrence, sumBy } from '../lib'
 import { ImportModal } from '../components/ImportModal'
-import type { Account, Card, Recurring, Transaction } from '../types'
+import { SpendingView } from '../components/SpendingView'
+import type { Account, Card, Recurring, SpendGroup, Transaction } from '../types'
 
 type Filter = 'all' | 'income' | 'expense'
 
-export type TxView = 'list' | 'recurring'
+export type TxView = 'list' | 'recurring' | 'merchants'
 
 interface Props {
+  groups: SpendGroup[]
+  onSaveGroup: (name: string, terms: string) => void
+  onDeleteGroup: (id: string) => void
   accounts: Account[]
   onImport: (list: Transaction[]) => void
   cards: Card[]
@@ -29,7 +33,7 @@ interface Props {
 
 const tagStyle = (color: string) => ({ '--c': color }) as React.CSSProperties
 
-export function Transactions({ accounts, onImport, cards, receiptIds, onOpenReceipt, view, onView, txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
+export function Transactions({ groups, onSaveGroup, onDeleteGroup, accounts, onImport, cards, receiptIds, onOpenReceipt, view, onView, txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
   const [importing, setImporting] = useState(false)
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
@@ -61,6 +65,7 @@ export function Transactions({ accounts, onImport, cards, receiptIds, onOpenRece
           tabs={[
             { id: 'list', label: 'Lançamentos' },
             { id: 'recurring', label: 'Recorrentes', icon: <Repeat size={13} />, count: rules.length },
+            { id: 'merchants', label: 'Onde gasto', icon: <PieChart size={13} /> },
           ]}
         />
         {view === 'recurring' && (
@@ -71,7 +76,9 @@ export function Transactions({ accounts, onImport, cards, receiptIds, onOpenRece
         )}
       </div>
 
-      {view === 'list' ? (
+      {view === 'merchants' ? (
+        <SpendingView txs={txs} groups={groups} onSaveGroup={onSaveGroup} onDeleteGroup={onDeleteGroup} />
+      ) : view === 'list' ? (
         <>
           <div className="toolbar">
             <div className="search">

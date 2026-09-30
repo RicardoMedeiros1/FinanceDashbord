@@ -113,12 +113,20 @@ export interface BankLink {
   balances?: Record<string, number>
 }
 
+/** Grupo de gastos criado pelo usuário: todas as despesas cuja descrição tem alguma das palavras. */
+export interface SpendGroup {
+  id: string
+  name: string
+  terms: string // palavras separadas por vírgula, ex.: "padaria, panificadora"
+}
+
 /** Perfil do usuário (um único registro, id 'me'). */
 export interface Profile {
   id: string
   name: string
   onboardingHidden?: boolean
   banks?: BankLink[]
+  groups?: SpendGroup[]
 }
 
 /** Conta (corrente, carteira, poupança...). O saldo é: saldo inicial + o que entrou e saiu desde a data inicial. */

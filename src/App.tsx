@@ -21,7 +21,7 @@ import { Overview } from './pages/Overview'
 import { Subscriptions, type SubsTab } from './pages/Subscriptions'
 import { Transactions, type TxView } from './pages/Transactions'
 import { Cards, type CardsTab } from './pages/Cards'
-import type { Account, BankLink, Budget, Card, CategoryId, Cycle, Goal, Installment, Page, Profile, Recurring, Subscription, Transaction, Transfer } from './types'
+import type { Account, BankLink, Budget, SpendGroup, Card, CategoryId, Cycle, Goal, Installment, Page, Profile, Recurring, Subscription, Transaction, Transfer } from './types'
 import { useStored } from './useStored'
 
 const TITLES: Record<Page, { title: string; subtitle: string }> = {
@@ -88,6 +88,15 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
       const cur = l.find((p) => p.id === 'me') ?? { id: 'me', name: '' }
       return [{ ...cur, banks: fn(cur.banks ?? []) }]
     })
+  const groups = useMemo(() => me?.groups ?? [], [me])
+  const updateGroups = (fn: (l: SpendGroup[]) => SpendGroup[]) =>
+    setProfile((l) => {
+      const cur = l.find((p) => p.id === 'me') ?? { id: 'me', name: '' }
+      return [{ ...cur, groups: fn(cur.groups ?? []) }]
+    })
+  // salvar com o nome de um grupo que já existe troca as palavras dele
+  const saveGroup = (name: string, terms: string) =>
+    updateGroups((l) => (l.some((g) => g.name.toLowerCase() === name.toLowerCase()) ? l.map((g) => (g.name.toLowerCase() === name.toLowerCase() ? { ...g, terms } : g)) : [...l, { id: uid(), name, terms }]))
   // Modo privacidade: esconde valores na tela (preferência deste aparelho)
   const [hidden, setHidden] = useState(() => {
     try {
@@ -440,6 +449,9 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
         )}
         {page === 'transactions' && (
           <Transactions
+            groups={groups}
+            onSaveGroup={saveGroup}
+            onDeleteGroup={(id) => updateGroups((l) => l.filter((g) => g.id !== id))}
             accounts={accounts}
             onImport={(list) =>
               setTxs((l) => {
@@ -453,8 +465,8 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             receiptIds={receiptIds}
             onOpenReceipt={(id) => void openReceipt(id).catch(() => alert('Não foi possível abrir o comprovante agora.'))}
             onEdit={(tx) => setForm({ tx })}
-            view={(sub === 'recurring' ? 'recurring' : 'list') satisfies TxView}
-            onView={(v) => go('transactions', v === 'recurring' ? 'recurring' : '')}
+            view={(sub === 'recurring' ? 'recurring' : sub === 'merchants' ? 'merchants' : 'list') satisfies TxView}
+            onView={(v) => go('transactions', v === 'list' ? '' : v)}
             onDelete={(id) => setTxs((l) => l.filter((t) => t.id !== id))}
             onNewRecurring={() => setForm({ repeat: true })}
             onToggleRule={(id) => setRules((l) => l.map((r) => (r.id === id ? (r.active ? { ...r, active: false } : { ...skipToToday(r), active: true }) : r)))}

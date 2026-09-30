@@ -479,3 +479,43 @@ main > .tabs { align-self: flex-start; }
 /* gráficos: sem o contorno branco ao clicar (o foco do teclado do recharts) */
 .recharts-wrapper, .recharts-wrapper *, .recharts-surface { outline: none !important; -webkit-tap-highlight-color: transparent; }
 .recharts-wrapper svg *:focus, .recharts-wrapper svg:focus { outline: none !important; }
+
+/* onde gasto */
+.spend { display: flex; flex-direction: column; gap: 14px; }
+.spend-hint { margin: -4px 0 0; }
+.spend-total { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.spend-total strong { font-size: 26px; }
+.spend-h { margin: 6px 0 0; font-size: 14px; }
+.spend-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.spend-group { display: flex; align-items: flex-start; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
+.spend-group.saved { border-color: color-mix(in srgb, var(--accent, #e0600f) 55%, var(--border)); }
+.spend-group-main { flex: 1; display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 12px; background: none; border: 0; color: inherit; cursor: pointer; }
+.spend-group .icon-btn { margin: 6px 6px 0 0; }
+.link-row { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.link-row:hover { text-decoration: underline; }
+.spend-share { height: 4px; border-radius: 4px; background: var(--surface-2); margin-top: 6px; overflow: hidden; }
+.spend-share span { display: block; height: 100%; background: #e0600f; }
+.spend-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.spend-title h3 { margin: 0; }
+.spend-save { display: flex; gap: 8px; flex-wrap: wrap; }
+.spend-save input { flex: 1; min-width: 160px; }
+.spend-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.spend-bars { display: flex; align-items: flex-end; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.spend-bar { flex: 1; min-width: 56px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.spend-bar-v { font-size: 11px; min-height: 14px; white-space: nowrap; }
+.spend-bar-track { width: 100%; height: 110px; display: flex; align-items: flex-end; border-radius: 8px; background: var(--surface-2); overflow: hidden; }
+.spend-bar-track span { display: block; width: 100%; background: #e0600f; border-radius: 6px 6px 0 0; }
+.search .icon-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; border: 0; background: none; }
+.search .icon-btn svg { position: static; transform: none; }
+.search:has(.icon-btn) input { padding-right: 38px; }
+.spend-bars { justify-content: flex-start; }
+.spend-bar { flex: 0 1 84px; }
+
+/* celular: os botões do topo quebram em mais de uma linha em vez de estourar a largura */
+@media (max-width: 760px) {
+  .topbar-right { flex-wrap: wrap; max-width: 100%; gap: 8px; }
+  .topbar { min-width: 0; }
+}
+/* o conteúdo nunca alarga a página: tabelas largas rolam dentro do cartão */
+main { min-width: 0; }
+.card { min-width: 0; }

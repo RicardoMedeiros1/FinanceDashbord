@@ -4,6 +4,7 @@ import { accountBalance } from './accounts'
 import { cardInvoices, cardSummary } from './cards'
 import { buildForecast } from './forecast'
 import type { Forecast } from './forecast'
+import { expensesIn, searchSpending, SUGGESTIONS as SPEND_GROUPS, squash } from './spending'
 import type { Account, Budget, Card, CategoryId, Installment, Recurring, Subscription, Transaction, Transfer } from './types'
 
 export interface Insight {
@@ -228,7 +229,43 @@ export const SUGGESTIONS = [
   'Quanto ainda devo em parcelas?',
   'Quando fecham as faturas dos meus cartões?',
   'Quanto vai sobrar até o fim do mês?',
+  'Quanto gastei na padaria?',
 ]
+
+const NOT_A_PLACE = /^(este|esse|essa|esta|mes|ano|semana|hoje|total|tudo|geral|categoria|categorias|dinheiro|mais|menos|periodo)\b/
+
+/** "quanto gastei no mercado livre?", "tudo de padaria" → "mercado livre", "padaria". Vazio se a pergunta não cita um lugar. */
+export function spendingQuery(q: string): string {
+  const m = q.match(/\b(?:gast\w*|compr\w*|paguei|tudo)\b.*?\b(?:no|na|nos|nas|em|com|de|do|da|num|numa)\s+(.+?)[\s?!.]*$/)
+  if (!m) return ''
+  const x = m[1].replace(/^(o|a|os|as|um|uma)\s+/, '').trim()
+  return x.length >= 2 && !NOT_A_PLACE.test(x) ? x : ''
+}
+
+/** Quanto foi gasto num lugar/tipo (mês, 3 meses e tudo), com a maior compra e a última. */
+export function spendingAnswer(place: string, txs: Transaction[]): string {
+  const candidates = [place, place.replace(/s$/, '')]
+  for (const c of candidates) {
+    // "padaria", "delivery"... são grupos prontos com várias palavras
+    const group = SPEND_GROUPS.find((g) => squash(g.name) === squash(c))
+    const terms = group ? group.terms : c
+    const all = searchSpending(expensesIn(txs, 'all'), terms)
+    if (all.length === 0) continue
+    const label = group ? group.name : place
+    const sum = (list: Transaction[]) => list.reduce((a, t) => a + t.amount, 0)
+    const part = (p: 'all' | '1m' | '3m') => {
+      const l = searchSpending(expensesIn(txs, p), terms)
+      return { total: sum(l), count: l.length }
+    }
+    const a = part('1m')
+    const b = part('3m')
+    const t = part('all')
+    const big = all.reduce((m, x) => (x.amount > m.amount ? x : m), all[0])
+    const line = (r: { total: number; count: number }) => `${brl(r.total)} (${r.count} ${r.count === 1 ? 'compra' : 'compras'})`
+    return `${label}:\n• Este mês: ${line(a)}\n• Últimos 3 meses: ${line(b)}\n• Tudo o que está registrado: ${line(t)}\nMaior compra: ${brl(big.amount)} em ${formatDate(big.date)} (${big.description}). Última em ${formatDate(all[0].date)}.\nVeja o detalhe em Transações → Onde gasto.`
+  }
+  return `Não achei despesas com “${place}”. Tente outra palavra, ou veja Transações → Onde gasto.`
+}
 
 /** Assistente local: responde por palavras-chave usando os seus dados (não é um LLM). */
 export function answer(question: string, txs: Transaction[], subs: Subscription[], budgets: Budget[], installments: Installment[] = [], cards: Card[] = [], extra: { accounts?: Account[]; transfers?: Transfer[]; rules?: Recurring[] } = {}): string {
@@ -297,6 +334,8 @@ export function answer(question: string, txs: Transaction[], subs: Subscription[
     const top = byCat[0]
     return `Neste mês você guarda ${rate.toFixed(0)}% da renda${rate < 20 ? ' — abaixo dos 20% recomendados' : ''}. ${top ? `Sua maior categoria é ${CATEGORIES[top[0]].label} (${brl(top[1])}); reduzir 10% dela libera ${brl(top[1] * 0.1)}/mês.` : ''}`
   }
+  const place = spendingQuery(q)
+  if (place) return spendingAnswer(place, txs)
   if (/gast|despesa|categoria|onde/.test(q)) {
     if (!byCat.length) return 'Ainda não há despesas neste mês.'
     return `Você gastou ${brl(expense)} este mês. Maiores categorias:\n${byCat.slice(0, 4).map(([c, v]) => `• ${CATEGORIES[c].label}: ${brl(v)}`).join('\n')}`

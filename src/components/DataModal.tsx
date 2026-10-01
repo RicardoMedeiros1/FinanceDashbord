@@ -1,6 +1,6 @@
 import { Download, KeyRound, LogOut, RotateCcw, ShieldCheck, Trash2, UserX, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
-import type { Account, Budget, Card, Goal, Installment, Recurring, Subscription, Transaction, Transfer } from '../types'
+import type { Account, Budget, Card, Goal, Installment, Recurring, SpendGroup, Subscription, Transaction, Transfer } from '../types'
 import { PasswordForm } from '../cloud/PasswordForm'
 import { Modal } from './Modal'
 
@@ -14,6 +14,8 @@ export interface AppData {
   cards: Card[]
   accounts: Account[]
   transfers: Transfer[]
+  /** grupos de gastos e seus limites mensais; ausente em backups antigos (a importação não mexe nos grupos atuais) */
+  groups?: SpendGroup[]
 }
 
 export interface CloudInfo {
@@ -40,7 +42,12 @@ function parse(text: string): AppData {
   const raw = JSON.parse(text)
   const ok = (k: string) => Array.isArray(raw?.[k])
   if (!ok('txs') || !ok('subs') || !ok('budgets')) throw new Error('formato')
-  return { txs: raw.txs, subs: raw.subs, budgets: raw.budgets, goals: Array.isArray(raw.goals) ? raw.goals : [], recurring: Array.isArray(raw.recurring) ? raw.recurring : [], installments: Array.isArray(raw.installments) ? raw.installments : [], cards: Array.isArray(raw.cards) ? raw.cards : [], accounts: Array.isArray(raw.accounts) ? raw.accounts : [], transfers: Array.isArray(raw.transfers) ? raw.transfers : [] }
+  const groups: SpendGroup[] | undefined = Array.isArray(raw.groups)
+    ? raw.groups
+        .filter((g: SpendGroup) => g && typeof g.id === 'string' && typeof g.name === 'string' && typeof g.terms === 'string')
+        .map((g: SpendGroup) => ({ id: g.id, name: g.name, terms: g.terms, ...(typeof g.limit === 'number' && g.limit > 0 ? { limit: g.limit } : {}) }))
+    : undefined
+  return { groups, txs: raw.txs, subs: raw.subs, budgets: raw.budgets, goals: Array.isArray(raw.goals) ? raw.goals : [], recurring: Array.isArray(raw.recurring) ? raw.recurring : [], installments: Array.isArray(raw.installments) ? raw.installments : [], cards: Array.isArray(raw.cards) ? raw.cards : [], accounts: Array.isArray(raw.accounts) ? raw.accounts : [], transfers: Array.isArray(raw.transfers) ? raw.transfers : [] }
 }
 
 export function DataModal({ profileName, onProfileName, cloud, data, onImport, onReset, onClear, onClose, onSecurity }: Props) {

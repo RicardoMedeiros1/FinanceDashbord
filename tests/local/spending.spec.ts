@@ -190,3 +190,45 @@ test('limite mensal por grupo: define, mostra o progresso, avisa na visão geral
   await expect(p.getByRole('button', { name: 'Definir limite de Padaria' })).toBeVisible()
   expect((await p.ls('fd:profile'))[0].groups[0].limit).toBeUndefined()
 })
+
+test('backup inclui grupos e limites; backup antigo (sem grupos) não apaga os atuais', async ({ browser, baseURL }) => {
+  const fs = await import('node:fs')
+  const { p } = await device(browser, baseURL, {
+    init: () => {
+      if (sessionStorage.getItem('seeded')) return
+      sessionStorage.setItem('seeded', '1')
+      localStorage.setItem('fd:profile', JSON.stringify([{ id: 'me', name: 'Ana', groups: [{ id: 'g1', name: 'Padaria', terms: 'padaria, padoca', limit: 120 }, { id: 'g2', name: 'Delivery', terms: 'ifood' }] }]))
+    },
+  })
+  await p.goto('./#/overview')
+  await p.click('button:has-text("Dados")')
+  const [dl] = await Promise.all([p.waitForEvent('download'), p.click('button:has-text("Exportar backup")')])
+  const path = await dl.path()
+  const json = JSON.parse(fs.readFileSync(path, 'utf8'))
+  expect(json.groups).toEqual([{ id: 'g1', name: 'Padaria', terms: 'padaria, padoca', limit: 120 }, { id: 'g2', name: 'Delivery', terms: 'ifood' }])
+
+  // muda os grupos e restaura o backup: voltam como estavam, com o limite
+  await p.evaluate(() => localStorage.setItem('fd:profile', JSON.stringify([{ id: 'me', name: 'Ana', groups: [{ id: 'x', name: 'Outro', terms: 'xis' }] }])))
+  await p.reload()
+  await p.click('button:has-text("Dados")')
+  await p.locator('input[type=file]').setInputFiles(path)
+  await expect(p.getByText('Backup importado.')).toBeVisible()
+  let groups = (await p.ls('fd:profile'))[0].groups
+  expect(groups).toEqual(json.groups)
+  expect((await p.ls('fd:profile'))[0].name).toBe('Ana') // o resto do perfil fica
+
+  // backup antigo, sem o campo: os grupos atuais continuam
+  const old = { ...json }
+  delete old.groups
+  fs.writeFileSync(path, JSON.stringify(old))
+  await p.locator('input[type=file]').setInputFiles(path)
+  await expect(p.getByText('Backup importado.')).toBeVisible()
+  groups = (await p.ls('fd:profile'))[0].groups
+  expect(groups).toHaveLength(2)
+
+  // entradas inválidas são descartadas
+  fs.writeFileSync(path, JSON.stringify({ ...json, groups: [{ id: 1 }, null, { id: 'ok', name: 'Bom', terms: 'bom', limit: -5 }] }))
+  await p.locator('input[type=file]').setInputFiles(path)
+  await expect(p.getByText('Backup importado.')).toBeVisible()
+  await expect.poll(async () => (await p.ls('fd:profile'))[0].groups).toEqual([{ id: 'ok', name: 'Bom', terms: 'bom' }])
+})

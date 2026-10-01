@@ -252,7 +252,7 @@ Supabase seguindo [docs/SUPABASE.md](docs/SUPABASE.md). Sem isso o app continua 
 
 ### Seus dados
 
-Ficam no navegador de cada aparelho (`localStorage`). Para levar de um aparelho a outro, use **Dados → Exportar backup** e **Importar backup**.
+Ficam no navegador de cada aparelho (`localStorage`). Para levar de um aparelho a outro (lançamentos, contas, cartões, metas, grupos de gastos e seus limites), use **Dados → Exportar backup** e **Importar backup**.
 
 ## Testes
 

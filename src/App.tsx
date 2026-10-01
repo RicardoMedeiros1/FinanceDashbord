@@ -678,7 +678,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
           profileName={profileName}
           onProfileName={(name) => patchProfile({ name })}
           cloud={cloud ? { email: cloud.email, onSignOut: () => void signOut(), onChangePassword: (pw) => cloud.auth.updatePassword(pw), onDeleteAccount: deleteAccountNow } : undefined}
-          data={{ txs, subs, budgets, goals, recurring: rules, installments, cards, accounts, transfers }}
+          data={{ txs, subs, budgets, goals, recurring: rules, installments, cards, accounts, transfers, groups }}
           onClose={() => setDataOpen(false)}
           onSecurity={() => { setDataOpen(false); setSecurityOpen(true) }}
           onImport={(d) => {
@@ -691,6 +691,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             setCards(d.cards)
             setAccounts(d.accounts)
             setTransfers(d.transfers)
+            if (d.groups) updateGroups(() => d.groups!)
           }}
           onClear={clearAll}
           onReset={() => {

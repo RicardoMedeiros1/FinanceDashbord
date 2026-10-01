@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { expensesIn, filterMerchant, matchesTerms, merchantName, parseTerms, periodStart, rankMerchants, searchSpending, summarize } from '../../src/spending'
+import { groupLimits, groupSpent, expensesIn, filterMerchant, matchesTerms, merchantName, parseTerms, periodStart, rankMerchants, searchSpending, summarize } from '../../src/spending'
 import type { Transaction } from '../../src/types'
 
 const tx = (id: string, date: string, description: string, amount: number, type: 'expense' | 'income' = 'expense'): Transaction => ({ id, date, description, amount, type, category: 'outros' })
@@ -70,4 +70,27 @@ test('ranking por estabelecimento, busca e filtro exato', () => {
   expect(searchSpending(list, 'uber').map((t) => t.id)).toEqual(['7', '6']) // busca por palavra pega os dois
   expect(filterMerchant(list, merchantName('Uber').key).map((t) => t.id)).toEqual(['6']) // escolher o estabelecimento é exato
   expect(searchSpending(list, 'padaria, mercado pago').map((t) => t.id)).toEqual(['5', '4', '3'])
+})
+
+test('limite por grupo: conta só o mês atual, ignora grupos sem limite e marca aviso/estouro', () => {
+  const list = [
+    tx('1', '2026-09-03', 'Padaria Estrela', 60),
+    tx('2', '2026-09-20', 'Panificadora São José', 30),
+    tx('3', '2026-08-28', 'Padaria Estrela', 500), // mês passado
+    tx('4', '2026-10-02', 'Padaria Estrela', 80), // futura
+    tx('5', '2026-09-10', 'Salário padaria', 999, 'income'), // receita
+    tx('6', '2026-09-05', 'iFood', 130),
+  ]
+  const groups = [
+    { id: 'p', name: 'Padaria', terms: 'padaria, panificadora', limit: 100 },
+    { id: 'd', name: 'Delivery', terms: 'ifood', limit: 130 },
+    { id: 'm', name: 'Mercado', terms: 'mercado' }, // sem limite
+    { id: 'z', name: 'Zero', terms: 'ifood', limit: 0 }, // limite 0 = sem limite
+  ]
+  expect(groupSpent(groups[0], list, TODAY)).toEqual({ spent: 90, count: 2 })
+  const r = groupLimits(groups, list, TODAY)
+  expect(r.map((x) => x.group.id)).toEqual(['p', 'd'])
+  expect(r[0]).toMatchObject({ spent: 90, state: 'warn' }) // 90%
+  expect(r[0].pct).toBeCloseTo(90)
+  expect(r[1]).toMatchObject({ spent: 130, state: 'over' }) // exatamente o limite já conta como estourado
 })

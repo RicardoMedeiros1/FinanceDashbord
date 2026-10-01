@@ -1,7 +1,7 @@
 // "Onde gasto": agrupa as despesas por estabelecimento e por tipo (padaria, mercado livre...). Funções puras.
 import { normDesc } from './importer'
 import { monthKey, shiftMonth, toISO } from './lib'
-import type { Transaction } from './types'
+import type { SpendGroup, Transaction } from './types'
 
 /** Só letras e números, sem acento: "MERCADOLIVRE*12AB" e "Mercado Livre" ficam comparáveis. */
 export const squash = (s: string) => normDesc(s).replace(/[^a-z0-9]/g, '')
@@ -158,3 +158,29 @@ export const searchSpending = (list: Transaction[], query: string) => {
 /** Só as despesas de um estabelecimento (pelo nome normalizado, sem "conter"). */
 export const filterMerchant = (list: Transaction[], key: string) =>
   list.filter((t) => merchantName(t.description).key === key).sort((a, b) => b.date.localeCompare(a.date))
+
+export interface GroupLimit {
+  group: SpendGroup & { limit: number }
+  spent: number
+  count: number
+  pct: number
+  state: '' | 'warn' | 'over'
+}
+
+/** Quanto foi gasto neste mês nas despesas que batem com as palavras do grupo. */
+export function groupSpent(group: SpendGroup, txs: Transaction[], today = toISO(new Date())) {
+  const terms = parseTerms(group.terms)
+  const hit = expensesIn(txs, '1m', today).filter((t) => matchesTerms(t.description, terms))
+  return { spent: hit.reduce((s, t) => s + t.amount, 0), count: hit.length }
+}
+
+/** Grupos com limite mensal: quanto já foi gasto neste mês (só despesas até hoje) e em que situação está. */
+export function groupLimits(groups: SpendGroup[], txs: Transaction[], today = toISO(new Date())): GroupLimit[] {
+  return groups
+    .filter((g): g is SpendGroup & { limit: number } => typeof g.limit === 'number' && g.limit > 0)
+    .map((group) => {
+      const { spent, count } = groupSpent(group, txs, today)
+      const pct = (spent / group.limit) * 100
+      return { group, spent, count, pct, state: pct >= 100 ? ('over' as const) : pct >= 80 ? ('warn' as const) : ('' as const) }
+    })
+}

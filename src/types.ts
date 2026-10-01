@@ -122,6 +122,7 @@ export interface SpendGroup {
   id: string
   name: string
   terms: string // palavras separadas por vírgula, ex.: "padaria, panificadora"
+  limit?: number // limite mensal de gasto neste grupo (opcional)
 }
 
 /** Perfil do usuário (um único registro, id 'me'). */

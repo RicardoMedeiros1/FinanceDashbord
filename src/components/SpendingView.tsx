@@ -2,7 +2,8 @@ import { Search, Trash2, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { CATEGORIES } from '../categories'
 import { brl, formatDate, monthLabel } from '../lib'
-import { expensesIn, filterMerchant, parseTerms, PERIOD_LABEL, rankMerchants, searchSpending, summarize, SUGGESTIONS, matchesTerms, type Period } from '../spending'
+import { GroupLimit } from './GroupLimit'
+import { expensesIn, groupSpent, filterMerchant, parseTerms, PERIOD_LABEL, rankMerchants, searchSpending, summarize, SUGGESTIONS, matchesTerms, type Period } from '../spending'
 import type { SpendGroup, Transaction } from '../types'
 
 interface Props {
@@ -10,13 +11,14 @@ interface Props {
   groups: SpendGroup[]
   onSaveGroup: (name: string, terms: string) => void
   onDeleteGroup: (id: string) => void
+  onGroupLimit: (id: string, limit: number | null) => void
 }
 
 const PERIODS = Object.keys(PERIOD_LABEL) as Period[]
 const TOP = 15
 
 /** Para onde vai o dinheiro: ranking de estabelecimentos, grupos (padaria, mercado livre...) e o detalhe de cada busca. */
-export function SpendingView({ txs, groups, onSaveGroup, onDeleteGroup }: Props) {
+export function SpendingView({ txs, groups, onSaveGroup, onDeleteGroup, onGroupLimit }: Props) {
   const [period, setPeriod] = useState<Period>('3m')
   const [q, setQ] = useState('')
   const [merchant, setMerchant] = useState<{ key: string; name: string } | null>(null)
@@ -26,6 +28,7 @@ export function SpendingView({ txs, groups, onSaveGroup, onDeleteGroup }: Props)
 
   const expenses = useMemo(() => expensesIn(txs, period), [txs, period])
   const totalAll = useMemo(() => expenses.reduce((s, t) => s + t.amount, 0), [expenses])
+  const monthSpent = useMemo(() => new Map(groups.map((g) => [g.id, groupSpent(g, txs).spent])), [groups, txs])
   const ranking = useMemo(() => rankMerchants(expenses), [expenses])
 
   const list = useMemo(() => (merchant ? filterMerchant(expenses, merchant.key) : q.trim() ? searchSpending(expenses, q) : null), [expenses, merchant, q])
@@ -105,6 +108,11 @@ export function SpendingView({ txs, groups, onSaveGroup, onDeleteGroup }: Props)
                     </button>
                     {g.saved && (
                       <button className="icon-btn" onClick={() => { if (confirm(`Excluir o grupo “${g.name}”? As despesas continuam.`)) onDeleteGroup(g.id) }} aria-label={`Excluir grupo ${g.name}`}><Trash2 size={14} /></button>
+                    )}
+                    {g.saved && (
+                      <div className="spend-group-limit">
+                        <GroupLimit id={g.id} name={g.name} limit={groups.find((x) => x.id === g.id)?.limit} spent={monthSpent.get(g.id) ?? 0} onSave={onGroupLimit} />
+                      </div>
                     )}
                   </div>
                 ))}

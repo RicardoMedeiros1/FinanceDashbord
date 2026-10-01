@@ -139,3 +139,54 @@ test('assistente responde quanto foi gasto num lugar ou tipo de gasto', async ({
   expect(await ask('Quanto ganhei de salário e uber?')).toContain('Salário fixo') // e as de renda também
   expect(p.errors).toEqual([])
 })
+
+test('limite mensal por grupo: define, mostra o progresso, avisa na visão geral e no assistente', async ({ browser, baseURL }) => {
+  const { p } = await device(browser, baseURL, {
+    init: () => {
+      if (sessionStorage.getItem('seeded')) return
+      sessionStorage.setItem('seeded', '1')
+      const t = (id: string, date: string, description: string, amount: number) => ({ id, date, description, amount, type: 'expense', category: 'alimentacao' })
+      localStorage.setItem('fd:txs', JSON.stringify([t('1', '2026-09-03', 'Padaria Estrela', 70), t('2', '2026-09-20', 'Padoca da Esquina', 25), t('3', '2026-08-10', 'Padaria Estrela', 400)]))
+      localStorage.setItem('fd:profile', JSON.stringify([{ id: 'me', name: 'Ana', groups: [{ id: 'g1', name: 'Padaria', terms: 'padaria, padoca' }] }]))
+    },
+  })
+  await p.goto('./#/transactions/merchants')
+  await p.getByRole('button', { name: 'Definir limite de Padaria' }).click()
+  await p.getByLabel('Limite mensal de Padaria').fill('100')
+  await p.getByRole('button', { name: 'Salvar', exact: true }).click()
+  await expect(p.getByRole('progressbar', { name: 'Limite de Padaria' })).toHaveAttribute('aria-valuenow', '95')
+  expect(norm(await p.locator('.spend-group-limit').textContent())).toContain('R$ 95,00 de R$ 100,00')
+  expect((await p.ls('fd:profile'))[0].groups[0].limit).toBe(100)
+
+  // aparece também em Orçamentos
+  await p.goto('./#/budgets')
+  await expect(p.getByLabel('Limites por grupo')).toContainText('Padaria')
+  await expect(p.getByLabel('Limites por grupo')).toContainText('restam')
+
+  // aviso na visão geral (95% do limite)
+  await p.goto('./#/overview')
+  await expect(p.locator('.insights, body')).toContainText('Padaria perto do limite')
+
+  // estoura: alterar o limite para menos do que já foi gasto
+  await p.goto('./#/budgets')
+  await p.getByRole('button', { name: 'Editar limite de Padaria' }).click()
+  await p.getByLabel('Limite mensal de Padaria').fill('80,50')
+  await p.getByRole('button', { name: 'Salvar', exact: true }).click()
+  await expect(p.getByLabel('Limites por grupo')).toContainText('Estourou em')
+  await p.goto('./#/overview')
+  await expect(p.locator('body')).toContainText('Limite de Padaria estourado')
+
+  // assistente
+  await p.goto('./#/assistant')
+  await p.getByPlaceholder(/pergunte|digite/i).fill('Como estão meus limites?')
+  await p.keyboard.press('Enter')
+  await expect(p.locator('body')).toContainText('Padaria (grupo): R$')
+
+  // remover o limite (campo vazio)
+  await p.goto('./#/budgets')
+  await p.getByRole('button', { name: 'Editar limite de Padaria' }).click()
+  await p.getByLabel('Limite mensal de Padaria').fill('')
+  await p.getByRole('button', { name: 'Salvar', exact: true }).click()
+  await expect(p.getByRole('button', { name: 'Definir limite de Padaria' })).toBeVisible()
+  expect((await p.ls('fd:profile'))[0].groups[0].limit).toBeUndefined()
+})

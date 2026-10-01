@@ -487,7 +487,7 @@ main > .tabs { align-self: flex-start; }
 .spend-total strong { font-size: 26px; }
 .spend-h { margin: 6px 0 0; font-size: 14px; }
 .spend-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
-.spend-group { display: flex; align-items: flex-start; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
+.spend-group { display: flex; flex-wrap: wrap; align-items: flex-start; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
 .spend-group.saved { border-color: color-mix(in srgb, var(--accent, #e0600f) 55%, var(--border)); }
 .spend-group-main { flex: 1; display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 12px; background: none; border: 0; color: inherit; cursor: pointer; }
 .spend-group .icon-btn { margin: 6px 6px 0 0; }
@@ -630,3 +630,13 @@ main { min-width: 0; }
 .lock-screen { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: var(--bg, #0b0b0b); overflow-y: auto; }
 .lock-screen .code-input { max-width: 260px; align-self: center; width: 100%; }
 .lock-content { display: contents; }
+
+/* limite mensal por grupo */
+.spend-group-limit { flex-basis: 100%; padding: 0 12px 12px; }
+.group-limit { display: flex; flex-direction: column; gap: 6px; }
+.group-limit-row { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.group-limit-row .icon-btn { margin: 0; }
+.group-limit-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.group-limit-form input { flex: 1; min-width: 140px; }
+.budget-groups { display: grid; gap: 12px; margin-top: 18px; }
+.budget-groups h3 { margin: 0; }

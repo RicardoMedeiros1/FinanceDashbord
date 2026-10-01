@@ -12,7 +12,7 @@ import { nextInvoiceToPay } from '../cards'
 import { accountBalance, totalBalance } from '../accounts'
 import { ForecastCard } from '../components/ForecastCard'
 import { buildForecast } from '../forecast'
-import type { Account, Budget, Card, Goal, Installment, Page, Recurring, Subscription, Transaction, Transfer } from '../types'
+import type { Account, Budget, Card, Goal, Installment, Page, Recurring, SpendGroup, Subscription, Transaction, Transfer } from '../types'
 
 const pct = (cur: number, prev: number) => (prev > 0 ? ((cur - prev) / prev) * 100 : null)
 
@@ -28,13 +28,14 @@ interface Props {
   transfers: Transfer[]
   rules: Recurring[]
   budgets: Budget[]
+  groups: SpendGroup[]
   goals: Goal[]
   onNavigate: (p: Page) => void
   onAddGoal: (g: Omit<Goal, 'id' | 'saved'>) => void
   onDeposit: (id: string, amount: number) => void
 }
 
-export function Overview({ onboarding, txs, subs, installments, cards, accounts, transfers, rules, budgets, goals, onNavigate, onAddGoal, onDeposit }: Props) {
+export function Overview({ onboarding, txs, subs, installments, cards, accounts, transfers, rules, budgets, groups, goals, onNavigate, onAddGoal, onDeposit }: Props) {
   const [range, setRange] = useState<'30d' | '6m'>('30d')
 
   const months = useMemo(
@@ -75,7 +76,7 @@ export function Overview({ onboarding, txs, subs, installments, cards, accounts,
 
   const forecast = useMemo(() => buildForecast({ txs, rules, subs, installments, cards, accounts, transfers }), [txs, rules, subs, installments, cards, accounts, transfers])
   const hide = valuesHidden() // os textos dos insights já vêm formatados: refaz ao alternar a privacidade
-  const insights = useMemo(() => buildInsights(txs, subs, budgets, installments, cards, forecast), [txs, subs, budgets, installments, cards, forecast, hide]) // eslint-disable-line react-hooks/exhaustive-deps
+  const insights = useMemo(() => buildInsights(txs, subs, budgets, installments, cards, forecast, groups), [txs, subs, budgets, installments, cards, forecast, groups, hide]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const upcoming = [
     ...activeSubs.map((x) => ({ id: x.id, name: x.name, color: x.color, date: nextCharge(x), price: x.price, note: '' })),

@@ -21,6 +21,7 @@ interface Props {
   groups: SpendGroup[]
   onSaveGroup: (name: string, terms: string) => void
   onDeleteGroup: (id: string) => void
+  onGroupLimit: (id: string, limit: number | null) => void
   accounts: Account[]
   onImport: (list: Transaction[]) => void
   cards: Card[]
@@ -39,7 +40,7 @@ interface Props {
 
 const tagStyle = (color: string) => ({ '--c': color }) as React.CSSProperties
 
-export function Transactions({ knownIds, onConvertTransfers, onMarkTransfer, groups, onSaveGroup, onDeleteGroup, accounts, onImport, cards, receiptIds, onOpenReceipt, view, onView, txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
+export function Transactions({ knownIds, onConvertTransfers, onMarkTransfer, groups, onSaveGroup, onDeleteGroup, onGroupLimit, accounts, onImport, cards, receiptIds, onOpenReceipt, view, onView, txs, rules, onEdit, onDelete, onNewRecurring, onToggleRule, onDeleteRule }: Props) {
   const [importing, setImporting] = useState(false)
   const [reviewing, setReviewing] = useState(false)
   const [marking, setMarking] = useState<Transaction | null>(null)
@@ -94,7 +95,7 @@ export function Transactions({ knownIds, onConvertTransfers, onMarkTransfer, gro
       )}
 
       {view === 'merchants' ? (
-        <SpendingView txs={txs} groups={groups} onSaveGroup={onSaveGroup} onDeleteGroup={onDeleteGroup} />
+        <SpendingView txs={txs} groups={groups} onSaveGroup={onSaveGroup} onDeleteGroup={onDeleteGroup} onGroupLimit={onGroupLimit} />
       ) : view === 'list' ? (
         <>
           <div className="toolbar">

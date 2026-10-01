@@ -4,8 +4,8 @@ import { accountBalance } from './accounts'
 import { cardInvoices, cardSummary } from './cards'
 import { buildForecast } from './forecast'
 import type { Forecast } from './forecast'
-import { expensesIn, searchSpending, SUGGESTIONS as SPEND_GROUPS, squash } from './spending'
-import type { Account, Budget, Card, CategoryId, Installment, Recurring, Subscription, Transaction, Transfer } from './types'
+import { expensesIn, groupLimits, searchSpending, SUGGESTIONS as SPEND_GROUPS, squash } from './spending'
+import type { Account, Budget, Card, CategoryId, Installment, Recurring, SpendGroup, Subscription, Transaction, Transfer } from './types'
 
 export interface Insight {
   id: string
@@ -34,6 +34,7 @@ export function buildInsights(
   installments: Installment[] = [],
   cards: Card[] = [],
   forecast?: Forecast,
+  groups: SpendGroup[] = [],
 ): Insight[] {
   const now = new Date()
   const cur = monthKey(now)
@@ -121,6 +122,12 @@ export function buildInsights(
     } else if (pct >= 80) {
       out.push({ id: `b-${b.category}`, tone: 'warn', title: `${CATEGORIES[b.category].label} perto do limite`, text: `Já usou ${pct.toFixed(0)}% do orçamento — restam ${brl(b.limit - spent)}.` })
     }
+  }
+
+  // Limites por grupo (Onde gasto)
+  for (const g of groupLimits(groups, txs)) {
+    if (g.state === 'over') out.push({ id: `g-${g.group.id}`, tone: 'warn', title: `Limite de ${g.group.name} estourado`, text: `${brl(g.spent)} de ${brl(g.group.limit)} (${g.pct.toFixed(0)}%) neste mês.` })
+    else if (g.state === 'warn') out.push({ id: `g-${g.group.id}`, tone: 'warn', title: `${g.group.name} perto do limite`, text: `Já usou ${g.pct.toFixed(0)}% do limite do mês — restam ${brl(g.group.limit - g.spent)}.` })
   }
 
   // Assinaturas
@@ -268,7 +275,7 @@ export function spendingAnswer(place: string, txs: Transaction[]): string {
 }
 
 /** Assistente local: responde por palavras-chave usando os seus dados (não é um LLM). */
-export function answer(question: string, txs: Transaction[], subs: Subscription[], budgets: Budget[], installments: Installment[] = [], cards: Card[] = [], extra: { accounts?: Account[]; transfers?: Transfer[]; rules?: Recurring[] } = {}): string {
+export function answer(question: string, txs: Transaction[], subs: Subscription[], budgets: Budget[], installments: Installment[] = [], cards: Card[] = [], extra: { accounts?: Account[]; transfers?: Transfer[]; rules?: Recurring[]; groups?: SpendGroup[] } = {}): string {
   const q = norm(question)
   const cur = monthKey(new Date())
   const list = txs.filter((t) => inMonth(t, cur))
@@ -321,13 +328,15 @@ export function answer(question: string, txs: Transaction[], subs: Subscription[
   }
   if (/orcamento|limite/.test(q)) {
     const spent = spendByCategory(list)
-    if (!budgets.length) return 'Você ainda não definiu orçamentos. Defina limites na aba Orçamentos.'
-    return budgets
-      .map((b) => {
+    const gl = groupLimits(extra.groups ?? [], txs)
+    if (!budgets.length && !gl.length) return 'Você ainda não definiu orçamentos. Defina limites na aba Orçamentos.'
+    return [
+      ...budgets.map((b) => {
         const s = spent.get(b.category) ?? 0
         return `• ${CATEGORIES[b.category].label}: ${brl(s)} de ${brl(b.limit)} (${((s / b.limit) * 100).toFixed(0)}%)`
-      })
-      .join('\n')
+      }),
+      ...gl.map((g) => `• ${g.group.name} (grupo): ${brl(g.spent)} de ${brl(g.group.limit)} (${g.pct.toFixed(0)}%)`),
+    ].join('\n')
   }
   if (/econom|poup|guardar|meta/.test(q)) {
     const rate = income > 0 ? ((income - expense) / income) * 100 : 0

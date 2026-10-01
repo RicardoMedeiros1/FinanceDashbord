@@ -5,9 +5,11 @@ import { useMemo, useState } from 'react'
 import { CATEGORIES, EXPENSE_CATEGORIES } from '../categories'
 import { financialHealth, spendByCategory } from '../insights'
 import { brl, inMonth, monthKey } from '../lib'
-import type { Budget, CategoryId, Subscription, Transaction } from '../types'
+import { GroupLimit } from '../components/GroupLimit'
+import { groupSpent } from '../spending'
+import type { Budget, CategoryId, SpendGroup, Subscription, Transaction } from '../types'
 
-export function Budgets({ txs, subs, budgets, onChange }: { txs: Transaction[]; subs: Subscription[]; budgets: Budget[]; onChange: (category: CategoryId, limit: number) => void }) {
+export function Budgets({ txs, subs, budgets, groups, onGroupLimit, onOpenGroups, onChange }: { txs: Transaction[]; subs: Subscription[]; budgets: Budget[]; groups: SpendGroup[]; onGroupLimit: (id: string, limit: number | null) => void; onOpenGroups: () => void; onChange: (category: CategoryId, limit: number) => void }) {
   const spent = useMemo(() => spendByCategory(txs.filter((t) => inMonth(t, monthKey(new Date())))), [txs])
   const [editing, setEditing] = useState<CategoryId | null>(null)
   const [draft, setDraft] = useState('')
@@ -92,6 +94,29 @@ export function Budgets({ txs, subs, budgets, onChange }: { txs: Transaction[]; 
             </div>
           )
         })}
+      </div>
+
+      <div className="card budget-groups" aria-label="Limites por grupo">
+        <div className="card-head">
+          <h3>Limites por grupo de gastos</h3>
+          <button className="link" onClick={onOpenGroups}>Gerenciar grupos</button>
+        </div>
+        {groups.length === 0 ? (
+          <p className="muted small">Crie grupos em Transações → Onde gasto (ex.: Delivery, Mercado Livre) e defina quanto quer gastar neles por mês.</p>
+        ) : (
+          <div className="grid budgets">
+            {groups.map((g) => (
+              <div className="card budget" key={g.id}>
+                <div className="card-head"><h3>{g.name}</h3></div>
+                <div className="budget-nums">
+                  <strong>{brl(groupSpent(g, txs).spent)}</strong>
+                  <span className="muted">{g.limit ? `de ${brl(g.limit)}` : 'sem limite'}</span>
+                </div>
+                <GroupLimit id={g.id} name={g.name} limit={g.limit} spent={groupSpent(g, txs).spent} onSave={onGroupLimit} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </>
   )

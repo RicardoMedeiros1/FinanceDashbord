@@ -103,6 +103,8 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
   // salvar com o nome de um grupo que já existe troca as palavras dele
   const saveGroup = (name: string, terms: string) =>
     updateGroups((l) => (l.some((g) => g.name.toLowerCase() === name.toLowerCase()) ? l.map((g) => (g.name.toLowerCase() === name.toLowerCase() ? { ...g, terms } : g)) : [...l, { id: uid(), name, terms }]))
+  const setGroupLimit = (id: string, limit: number | null) =>
+    updateGroups((l) => l.map((g) => (g.id === id ? { ...g, limit: limit && limit > 0 ? limit : undefined } : g)))
   // Modo privacidade: esconde valores na tela (preferência deste aparelho)
   const [hidden, setHidden] = useState(() => {
     try {
@@ -514,6 +516,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             txs={txs}
             subs={subs}
             budgets={budgets}
+            groups={groups}
             goals={goals}
             onNavigate={setPage}
             onAddGoal={(g) => saveGoal({ ...g })}
@@ -528,6 +531,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             groups={groups}
             onSaveGroup={saveGroup}
             onDeleteGroup={(id) => updateGroups((l) => l.filter((g) => g.id !== id))}
+            onGroupLimit={setGroupLimit}
             accounts={accounts}
             onImport={(list) =>
               setTxs((l) => {
@@ -604,6 +608,9 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             txs={txs}
             subs={subs}
             budgets={budgets}
+            groups={groups}
+            onGroupLimit={setGroupLimit}
+            onOpenGroups={() => go('transactions', 'merchants')}
             onChange={(category: CategoryId, limit) =>
               setBudgets((l) => (l.some((b) => b.category === category) ? l.map((b) => (b.category === category ? { ...b, limit } : b)) : [...l, { category, limit }]))
             }
@@ -626,7 +633,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             onReserve={(reserve) => patchProfile({ reserve })}
           />
         )}
-        {page === 'assistant' && <Assistant txs={txs} subs={subs} budgets={budgets} installments={installments} cards={cards} accounts={accounts} transfers={transfers} rules={rules} />}
+        {page === 'assistant' && <Assistant txs={txs} subs={subs} budgets={budgets} installments={installments} cards={cards} accounts={accounts} transfers={transfers} rules={rules} groups={groups} />}
       </main>
 
       {gate === 'ask' && (

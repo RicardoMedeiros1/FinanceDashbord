@@ -155,10 +155,20 @@ export function createSupabaseAuth(url: string, key: string): Auth {
       if (error) throw new Error(friendlyAuthError(error))
     },
     async mfaStatus() {
-      // lê só a sessão guardada (sem rede): o nível vem do próprio token
-      const { data, error } = await client.auth.mfa.getAuthenticatorAssuranceLevel()
-      if (error) throw new Error(friendlyAuthError(error))
-      return { enrolled: data.nextLevel === 'aal2', verified: data.currentLevel === 'aal2' }
+      const { data: cur, error: curError } = await client.auth.getSession()
+      if (curError) throw new Error(friendlyAuthError(curError))
+      if (!cur.session) return { enrolled: false, verified: false }
+      // fatores do servidor (o cache da sessão pode estar velho, p.ex. se o 2FA foi cadastrado em outro aparelho); sem rede, usa o cache
+      let user = cur.session.user
+      try {
+        const fresh = await client.auth.getUser()
+        if (fresh.data.user) user = fresh.data.user
+      } catch {
+        /* offline: segue com a sessão guardada */
+      }
+      const enrolled = (user.factors ?? []).some((f) => f.factor_type === 'totp' && f.status === 'verified')
+      const { data: level } = await client.auth.mfa.getAuthenticatorAssuranceLevel()
+      return { enrolled, verified: enrolled && level?.currentLevel === 'aal2' }
     },
     async mfaEnroll() {
       // cadastros que ficaram pela metade atrapalham um novo: remove antes
@@ -184,6 +194,7 @@ export function createSupabaseAuth(url: string, key: string): Auth {
         const { error } = await client.auth.mfa.unenroll({ factorId: f.id })
         if (error) throw new Error(friendlyAuthError(error))
       }
+      await client.auth.refreshSession().catch(() => undefined) // atualiza a lista de fatores guardada na sessão
     },
     async bankSync(req) {
       const { data, error } = await client.functions.invoke('pluggy', { body: req })

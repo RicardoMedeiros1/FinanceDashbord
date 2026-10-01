@@ -600,3 +600,16 @@ main { min-width: 0; }
 .warn-text { color: var(--amber); }
 .goal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 @media (max-width: 760px) { .goal-grid { grid-template-columns: 1fr; } }
+
+/* verificação em duas etapas */
+.login-card.wide { max-width: 460px; }
+.login-card h1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mfa-steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; }
+.mfa-qr { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.mfa-qr img { background: #fff; padding: 8px; border-radius: 12px; }
+.mfa-secret { display: block; margin-top: 4px; font-size: 15px; letter-spacing: 0.08em; word-break: break-all; }
+.code-input { font-size: 24px; letter-spacing: 0.4em; text-align: center; font-variant-numeric: tabular-nums; }
+.sec-block { display: flex; flex-direction: column; gap: 10px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border); }
+.sec-block:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+.sec-block h4 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 15px; }
+.sec-block p { margin: 0; }

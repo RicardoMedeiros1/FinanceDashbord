@@ -1,5 +1,6 @@
 import { Lock } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
+import { MfaChallenge, MfaSetup } from './MfaScreens'
 import { PasswordForm } from './PasswordForm'
 import type { Auth, Session } from './types'
 
@@ -12,6 +13,10 @@ interface Props {
 export function AuthGate({ auth, children }: Props) {
   const [session, setSession] = useState<Session | null | 'loading'>('loading')
   const [recovery, setRecovery] = useState<'recovery' | 'invite' | null>(null)
+  // verificação em duas etapas: 'checking' enquanto consulta; 'ok' libera o app
+  const [mfa, setMfa] = useState<'checking' | 'setup' | 'challenge' | 'ok' | 'error'>('checking')
+  const [mfaTick, setMfaTick] = useState(0)
+  const userId = session && session !== 'loading' ? session.userId : null
 
   useEffect(() => {
     let alive = true
@@ -26,8 +31,25 @@ export function AuthGate({ auth, children }: Props) {
     }
   }, [auth])
 
+  useEffect(() => {
+    if (!userId) return
+    let alive = true
+    setMfa('checking')
+    auth.mfaStatus().then(
+      // sem aplicativo cadastrado, o cadastro é obrigatório (mesmo que a sessão antiga ainda valha)
+      (st) => alive && setMfa(!st.enrolled ? 'setup' : st.verified ? 'ok' : 'challenge'),
+      () => alive && setMfa('error'),
+    )
+    return () => {
+      alive = false
+    }
+  }, [auth, userId, mfaTick])
+
   if (session === 'loading') return <div className="splash" aria-busy="true"><span className="brand-mark" /></div>
   if (!session) return <Login auth={auth} />
+  const signOut = () => void auth.signOut().then(() => setSession(null))
+  // quem já tem o 2FA precisa do código ANTES de trocar a senha: só o e-mail não basta
+  if (mfa === 'challenge') return <MfaChallenge auth={auth} email={session.email} onVerified={() => setMfaTick((n) => n + 1)} onSignOut={signOut} />
   if (recovery) {
     return (
       <div className="login">
@@ -43,6 +65,21 @@ export function AuthGate({ auth, children }: Props) {
       </div>
     )
   }
+  if (mfa === 'checking') return <div className="splash" aria-busy="true"><span className="brand-mark" /></div>
+  if (mfa === 'error') {
+    return (
+      <div className="login">
+        <div className="login-card">
+          <span className="brand-mark" />
+          <h1>Não foi possível verificar a conta</h1>
+          <p className="muted">Confira a internet e tente de novo.</p>
+          <button className="btn primary" onClick={() => setMfaTick((n) => n + 1)}>Tentar de novo</button>
+          <button type="button" className="link center" onClick={signOut}>Sair</button>
+        </div>
+      </div>
+    )
+  }
+  if (mfa === 'setup') return <MfaSetup auth={auth} email={session.email} onDone={() => setMfaTick((n) => n + 1)} onSignOut={signOut} onSkip={() => setMfa('ok')} />
   return <>{children(session)}</>
 }
 

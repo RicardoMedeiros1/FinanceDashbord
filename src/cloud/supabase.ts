@@ -123,6 +123,37 @@ export function createSupabaseAuth(url: string, key: string): Auth {
       if (error) throw new Error('Não foi possível excluir a conta agora. Tente de novo mais tarde.')
       await client.auth.signOut()
     },
+    async mfaStatus() {
+      // lê só a sessão guardada (sem rede): o nível vem do próprio token
+      const { data, error } = await client.auth.mfa.getAuthenticatorAssuranceLevel()
+      if (error) throw new Error(friendlyAuthError(error))
+      return { enrolled: data.nextLevel === 'aal2', verified: data.currentLevel === 'aal2' }
+    },
+    async mfaEnroll() {
+      // cadastros que ficaram pela metade atrapalham um novo: remove antes
+      const list = await client.auth.mfa.listFactors()
+      for (const f of list.data?.all ?? []) if (f.factor_type === 'totp' && f.status === 'unverified') await client.auth.mfa.unenroll({ factorId: f.id })
+      const { data, error } = await client.auth.mfa.enroll({ factorType: 'totp', issuer: 'Finn', friendlyName: `Finn ${new Date().toISOString().slice(0, 10)}` })
+      if (error || !data) throw new Error(friendlyAuthError(error ?? { message: 'enroll' }))
+      return { factorId: data.id, qr: data.totp.qr_code, secret: data.totp.secret, uri: data.totp.uri }
+    },
+    async mfaVerify(code, factorId) {
+      let id = factorId
+      if (!id) {
+        const list = await client.auth.mfa.listFactors()
+        id = list.data?.totp[0]?.id
+        if (!id) throw new Error('Nenhum aplicativo autenticador cadastrado.')
+      }
+      const { error } = await client.auth.mfa.challengeAndVerify({ factorId: id, code: code.replace(/\s/g, '') })
+      if (error) throw new Error(friendlyAuthError(error))
+    },
+    async mfaUnenroll() {
+      const list = await client.auth.mfa.listFactors()
+      for (const f of list.data?.all ?? []) {
+        const { error } = await client.auth.mfa.unenroll({ factorId: f.id })
+        if (error) throw new Error(friendlyAuthError(error))
+      }
+    },
     async bankSync(req) {
       const { data, error } = await client.functions.invoke('pluggy', { body: req })
       if (error) {

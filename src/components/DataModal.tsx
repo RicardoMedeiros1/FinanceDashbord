@@ -1,4 +1,4 @@
-import { Download, KeyRound, LogOut, RotateCcw, Trash2, UserX, Upload } from 'lucide-react'
+import { Download, KeyRound, LogOut, RotateCcw, ShieldCheck, Trash2, UserX, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import type { Account, Budget, Card, Goal, Installment, Recurring, Subscription, Transaction, Transfer } from '../types'
 import { PasswordForm } from '../cloud/PasswordForm'
@@ -32,6 +32,7 @@ interface Props {
   onReset: () => void
   onClear: () => void
   onClose: () => void
+  onSecurity: () => void
 }
 
 /** Valida o mínimo necessário para não quebrar o app com um arquivo errado. */
@@ -42,7 +43,7 @@ function parse(text: string): AppData {
   return { txs: raw.txs, subs: raw.subs, budgets: raw.budgets, goals: Array.isArray(raw.goals) ? raw.goals : [], recurring: Array.isArray(raw.recurring) ? raw.recurring : [], installments: Array.isArray(raw.installments) ? raw.installments : [], cards: Array.isArray(raw.cards) ? raw.cards : [], accounts: Array.isArray(raw.accounts) ? raw.accounts : [], transfers: Array.isArray(raw.transfers) ? raw.transfers : [] }
 }
 
-export function DataModal({ profileName, onProfileName, cloud, data, onImport, onReset, onClear, onClose }: Props) {
+export function DataModal({ profileName, onProfileName, cloud, data, onImport, onReset, onClear, onClose, onSecurity }: Props) {
   const file = useRef<HTMLInputElement>(null)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
   const [name, setName] = useState(profileName)
@@ -134,6 +135,7 @@ export function DataModal({ profileName, onProfileName, cloud, data, onImport, o
         {cloud && (
           <button className="btn danger" onClick={() => setDelOpen(true)}><UserX size={16} /> Excluir minha conta</button>
         )}
+        <button className="btn" onClick={onSecurity}><ShieldCheck size={16} /> Segurança</button>
         <a className="link small" href="#/privacy">Privacidade e termos de uso</a>
       </div>
       <input

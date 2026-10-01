@@ -3,6 +3,9 @@ import { expect, test } from '@playwright/test'
 import { handle } from '../../supabase/functions/pluggy/index'
 
 const ITEM = '3fa85f64-5717-4562-b3fc-2c963f66afa6'
+const jwt = (aal: string) => `eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify({ aal, sub: 'u1' })).toString('base64url')}.sig`
+const GOOD = jwt('aal2')
+const AAL1 = jwt('aal1')
 const BAD = '00000000-0000-4000-8000-000000000000'
 
 /** Servidor único que faz o papel do Supabase Auth e da API da Pluggy. */
@@ -20,7 +23,7 @@ async function startFake() {
     req.on('end', () => {
       seen.push({ url: req.url ?? '', key: req.headers['x-api-key'] as string | undefined })
       if (u.pathname === '/auth/v1/user') {
-        const ok = req.headers.authorization === 'Bearer good' && req.headers.apikey === 'anon'
+        const ok = [`Bearer ${GOOD}`, `Bearer ${AAL1}`].includes(req.headers.authorization ?? '') && req.headers.apikey === 'anon'
         return ok ? send(200, { id: 'u1', email: 'Me@X.com' }) : send(401, { msg: 'bad jwt' })
       }
       if (u.pathname === '/auth') {
@@ -70,7 +73,7 @@ async function startFake() {
   return { seen, state, env, close: () => new Promise<void>((r) => srv.close(() => r())) }
 }
 
-const call = (env: ReturnType<Awaited<ReturnType<typeof startFake>>['env']>, body: unknown, token = 'good') =>
+const call = (env: ReturnType<Awaited<ReturnType<typeof startFake>>['env']>, body: unknown, token = GOOD) =>
   handle(new Request('http://fn/', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) }), env)
 
 test('só atende quem está logado e liberado, e sem credenciais configuradas explica o que falta', async () => {
@@ -78,6 +81,12 @@ test('só atende quem está logado e liberado, e sem credenciais configuradas ex
   try {
     const body = { action: 'sync', items: [ITEM] }
     expect((await call(f.env(), body, 'ruim')).status).toBe(401)
+
+    // senha sem o código do aplicativo autenticador (aal1): não vê dados do banco
+    const weak = await (await call(f.env(), body, AAL1)).json()
+    expect(weak.error).toBe('mfa_required')
+    expect(weak.message).toContain('verificação em duas etapas')
+    expect(f.seen.filter((s) => s.url.startsWith('/items')).length).toBe(0)
 
     const forbidden = await (await call(f.env({ PLUGGY_ALLOWED_EMAILS: 'outro@x.com' }), body)).json()
     expect(forbidden.error).toBe('forbidden')
@@ -92,6 +101,8 @@ test('só atende quem está logado e liberado, e sem credenciais configuradas ex
     expect(wrong.error).toBe('pluggy_auth')
     // nada da Pluggy foi chamado antes de validar o usuário
     expect(f.seen.filter((s) => s.url.startsWith('/items')).length).toBe(0)
+    // a exceção explícita (projeto sem 2FA) existe, mas precisa ser ligada de propósito
+    expect((await (await call(f.env({ PLUGGY_ALLOW_AAL1: 'true' }), body, AAL1)).json()).items).toBeTruthy()
   } finally {
     await f.close()
   }

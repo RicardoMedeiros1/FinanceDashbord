@@ -72,6 +72,27 @@ export function createFakeAuth(base: string): Auth {
       localStorage.removeItem(KEY)
       emit()
     },
+    async mfaStatus() {
+      const r = await fetch(q(read()?.token ?? '', '/mfa/status')).catch(() => null)
+      if (!r || !r.ok) throw new Error('Sem conexão com o servidor. Verifique a internet.')
+      return (await r.json()) as { enrolled: boolean; verified: boolean }
+    },
+    async mfaEnroll() {
+      const r = await fetch(q(read()?.token ?? '', '/mfa/enroll'), { method: 'POST' }).catch(() => null)
+      if (!r) throw new Error('Sem conexão com o servidor. Verifique a internet.')
+      const j = await r.json()
+      if (!r.ok) throw new Error(String(j.message ?? 'Não foi possível cadastrar.'))
+      return j
+    },
+    async mfaVerify(code, factorId) {
+      const r = await fetch(q(read()?.token ?? '', '/mfa/verify'), { method: 'POST', body: JSON.stringify({ code, factorId }) }).catch(() => null)
+      if (!r) throw new Error('Sem conexão com o servidor. Verifique a internet.')
+      if (!r.ok) throw new Error('Código incorreto ou vencido. Confira se a hora do celular está certa e digite o código atual.')
+    },
+    async mfaUnenroll() {
+      const r = await fetch(q(read()?.token ?? '', '/mfa/unenroll'), { method: 'POST' }).catch(() => null)
+      if (!r || !r.ok) throw new Error('Não foi possível remover agora.')
+    },
     async bankSync(req) {
       const r = await fetch(q(read()?.token ?? '', '/pluggy'), { method: 'POST', body: JSON.stringify(req) }).catch(() => null)
       if (!r) throw new Error('Sem conexão com o servidor. Verifique a internet.')

@@ -31,3 +31,10 @@ test('erros de login viram mensagens em português', () => {
   expect(f({ message: 'x', code: 'weak_password' })).toContain('Senha fraca')
   expect(f({ message: 'Database error', code: 'unexpected_failure', status: 500 })).toContain('detalhe: unexpected_failure · 500 · Database error')
 })
+
+test('erros do 2FA viram mensagens em português', () => {
+  expect(f({ message: 'Invalid TOTP code entered', code: 'mfa_verification_failed' })).toContain('Código incorreto ou vencido')
+  expect(f({ message: 'x', code: 'mfa_challenge_expired' })).toContain('demorou demais')
+  expect(f({ message: 'MFA enroll is disabled for TOTP', code: 'mfa_totp_enroll_not_enabled' })).toContain('desligada no Supabase')
+  expect(f({ message: 'x', code: 'insufficient_aal' })).toContain('Confirme o código')
+})

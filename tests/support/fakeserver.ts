@@ -15,6 +15,8 @@ export interface FakeCloud {
     deleted: boolean
     /** simula a função "pluggy": `data` é o que a Pluggy tem; `error` faz a função responder com esse erro */
     pluggy: { data: any; error: string; requests: any[] }
+    /** verificação em duas etapas: `enforce` imita a regra do banco (dados só com a sessão verificada) */
+    mfa: { enrolled: boolean; pending: boolean; code: string; enforce: boolean; aal2: Set<string>; counter: number; enrollError: string }
   }
   close(): Promise<void>
 }
@@ -23,7 +25,7 @@ export interface FakeCloud {
 export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
   const rows = new Map<string, any>()
   const files = new Map<string, { buf: Buffer; type: string }>()
-  const state = { offline: false, seq: 0, version: 0, fetches: [] as string[], upserts: 0, password: 'pw', resets: [] as string[], deleted: false, pluggy: { data: null as any, error: '', requests: [] as any[] } }
+  const state = { offline: false, seq: 0, version: 0, fetches: [] as string[], upserts: 0, password: 'pw', resets: [] as string[], deleted: false, pluggy: { data: null as any, error: '', requests: [] as any[] }, mfa: { enrolled: false, pending: false, code: '123456', enforce: false, aal2: new Set<string>(), counter: 0, enrollError: '' } }
 
   const srv = http.createServer((req, res) => {
     const u = new URL(req.url ?? '/', `http://localhost:${port}`)
@@ -50,15 +52,43 @@ export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
       }
       if (path === '/login') {
         const b = JSON.parse(body.toString())
-        return !state.deleted && b.email === 'me@x.com' && b.password === state.password ? send(200, { userId: 'u1', token: 'tok' }) : send(401, { error: 'bad' })
+        if (state.deleted || b.email !== 'me@x.com' || b.password !== state.password) return send(401, { error: 'bad' })
+        // com 2FA cada login é uma sessão própria (começa sem a verificação)
+        const token = state.mfa.enrolled || state.mfa.enforce ? `tok-${++state.mfa.counter}` : 'tok'
+        return send(200, { userId: 'u1', token })
       }
       if (path === '/reset') {
         state.resets.push(JSON.parse(body.toString()).email)
         return send(200, { ok: true })
       }
-      if (path === '/recover') return send(200, { userId: 'u1', token: 'tok' }) // qualquer "link" vale
+      if (path === '/recover') return send(200, { userId: 'u1', token: state.mfa.enrolled || state.mfa.enforce ? `tok-${++state.mfa.counter}` : 'tok' }) // qualquer "link" vale
       if (state.offline) return send(503, { error: 'offline' })
-      if (q.token !== 'tok') return send(401, {})
+      if (q.token !== 'tok' && !q.token?.startsWith('tok-')) return send(401, {})
+      if (path.startsWith('/mfa/')) {
+        const m = state.mfa
+        // sem simular o 2FA (testes antigos), a sessão conta como cadastrada e verificada
+        if (path === '/mfa/status') return send(200, m.enrolled || m.enforce ? { enrolled: m.enrolled, verified: m.aal2.has(q.token) } : { enrolled: true, verified: true })
+        if (path === '/mfa/enroll') {
+          if (m.enrollError) return send(400, { message: m.enrollError })
+          m.pending = true
+          return send(200, { factorId: 'f1', qr: 'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>', secret: 'JBSWY3DPEHPK3PXP', uri: 'otpauth://totp/Finn:me%40x.com?secret=JBSWY3DPEHPK3PXP&issuer=Finn' })
+        }
+        if (path === '/mfa/verify') {
+          const b = JSON.parse(body.toString() || '{}')
+          if (b.code !== m.code) return send(400, { error: 'bad_code' })
+          if (m.pending) { m.enrolled = true; m.pending = false }
+          m.aal2.add(q.token)
+          return send(200, { ok: true })
+        }
+        if (path === '/mfa/unenroll') {
+          if (!(q.token === 'tok' || m.aal2.has(q.token))) return send(403, {})
+          m.enrolled = false
+          m.pending = false
+          return send(200, { ok: true })
+        }
+      }
+      // regra do banco: com 2FA exigido, os dados só abrem para a sessão verificada
+      if (state.mfa.enforce && q.token !== 'tok' && !state.mfa.aal2.has(q.token)) return send(403, { error: 'insufficient_aal' })
       if (path === '/delete-account') {
         rows.clear()
         files.clear()

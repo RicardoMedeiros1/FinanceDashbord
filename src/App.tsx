@@ -5,6 +5,7 @@ import { applyChanges, COLS, countLocal, SyncEngine, type Change, type Col, type
 import type { Auth } from './cloud/types'
 import { BankModal, type BankState } from './components/BankModal'
 import { DataModal } from './components/DataModal'
+import { SecurityModal } from './components/SecurityModal'
 import { InstallmentDetail } from './components/InstallmentDetail'
 import { Onboarding, type OnboardingStep } from './components/Onboarding'
 import { Modal } from './components/Modal'
@@ -120,6 +121,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     })
   const [form, setForm] = useState<{ tx?: Transaction; repeat?: boolean; income?: boolean } | null>(null)
   const [dataOpen, setDataOpen] = useState(false)
+  const [securityOpen, setSecurityOpen] = useState(false)
   const [tick, setTick] = useState(0)
 
   // ---------- sincronização com a nuvem ----------
@@ -627,6 +629,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
           cloud={cloud ? { email: cloud.email, onSignOut: () => void signOut(), onChangePassword: (pw) => cloud.auth.updatePassword(pw), onDeleteAccount: deleteAccountNow } : undefined}
           data={{ txs, subs, budgets, goals, recurring: rules, installments, cards, accounts, transfers }}
           onClose={() => setDataOpen(false)}
+          onSecurity={() => { setDataOpen(false); setSecurityOpen(true) }}
           onImport={(d) => {
             setTxs(d.txs)
             setSubs(d.subs)
@@ -652,6 +655,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
           }}
         />
       )}
+      {securityOpen && <SecurityModal auth={cloud?.auth} email={cloud?.email} onClose={() => setSecurityOpen(false)} />}
       {form && (
         <Modal title={form.tx ? 'Editar transação' : form.repeat ? 'Nova recorrente' : 'Nova transação'} onClose={() => setForm(null)}>
           <TransactionForm cards={cards} accounts={accounts} initial={form.tx} startRepeating={form.repeat} startIncome={form.income} onSave={saveForm} />

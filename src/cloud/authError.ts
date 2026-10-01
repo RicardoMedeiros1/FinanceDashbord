@@ -13,6 +13,12 @@ export function friendlyAuthError(e: AuthErrorLike): string {
   if (code === 'weak_password' || /password should be|weak password/i.test(msg)) return 'Senha fraca. Use pelo menos 8 caracteres, misturando letras e números.'
   if (code === 'over_email_send_rate_limit' || /email rate limit/i.test(msg)) return 'Muitos e-mails enviados. Aguarde alguns minutos e tente de novo.'
   if (code === 'session_not_found' || code === 'not_authenticated' || /auth session missing/i.test(msg)) return 'Sessão expirada. Peça um novo link ou entre de novo.'
+  if (code === 'mfa_verification_failed' || /invalid totp code/i.test(msg)) return 'Código incorreto ou vencido. Confira se a hora do celular está certa e digite o código atual.'
+  if (code === 'mfa_challenge_expired' || /challenge.*expired/i.test(msg)) return 'O código demorou demais. Digite o código atual do aplicativo.'
+  if (code === 'mfa_totp_enroll_not_enabled' || code === 'mfa_totp_verify_not_enabled' || /mfa.*(disabled|not enabled)/i.test(msg)) {
+    return 'A verificação em duas etapas está desligada no Supabase (Authentication → Sign In / Providers → Multi-Factor → TOTP).'
+  }
+  if (code === 'insufficient_aal') return 'Confirme o código do aplicativo autenticador para continuar.'
   if (code === 'invalid_credentials' || /invalid login credentials/i.test(msg)) return 'E-mail ou senha incorretos.'
   if (code === 'email_not_confirmed' || /email not confirmed/i.test(msg)) return 'E-mail não confirmado. No Supabase, confirme o usuário (Auto Confirm User).'
   if (code === 'over_request_rate_limit' || e.status === 429 || /rate limit|too many requests/i.test(msg)) {

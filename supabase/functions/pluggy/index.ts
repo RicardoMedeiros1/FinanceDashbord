@@ -74,6 +74,17 @@ const day = (v: unknown): string | null => (typeof v === 'string' && /^\d{4}-\d{
 const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 const MAX_PAGES = 60
 
+/** Lê um campo do corpo (payload) de um JWT "Bearer ..." sem validar (a validação é feita pelo Supabase Auth). */
+function jwtClaim(authorization: string, claim: string): unknown {
+  try {
+    const part = authorization.replace(/^Bearer\s+/i, '').split('.')[1] ?? ''
+    const json = atob(part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '='))
+    return (JSON.parse(json) as Record<string, unknown>)[claim]
+  } catch {
+    return undefined
+  }
+}
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function handle(req: Request, rawEnv: Env, fetchFn: typeof fetch = fetch): Promise<Response> {
   // segredos colados no painel costumam vir com espaço/quebra de linha ou aspas sobrando
@@ -94,6 +105,12 @@ export async function handle(req: Request, rawEnv: Env, fetchFn: typeof fetch = 
     return reply(401, { error: 'unauthorized', message: 'Não foi possível confirmar o login.' })
   }
   if (!email) return reply(401, { error: 'unauthorized', message: 'Sessão inválida. Entre de novo.' })
+
+  // dados do banco só para a sessão que passou pelo código do aplicativo autenticador (2FA);
+  // a assinatura do token já foi conferida pela chamada acima, então dá para ler o nível dele
+  if (env.get('PLUGGY_ALLOW_AAL1') !== 'true' && jwtClaim(auth, 'aal') !== 'aal2') {
+    return fail('mfa_required', 'Confirme o código do aplicativo autenticador (verificação em duas etapas) para ver os dados do banco.')
+  }
 
   // 2) só e-mails liberados usam a sua conta da Pluggy (o Meu Pluggy é para uso pessoal)
   const allowed = (env.get('PLUGGY_ALLOWED_EMAILS') ?? '').split(/[,;\s]+/).map((s) => s.trim().toLowerCase()).filter(Boolean)

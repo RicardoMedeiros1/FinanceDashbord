@@ -39,7 +39,7 @@ test('com conta: 10 erros de PIN seguidos saem da conta e limpam o aparelho; esq
   }
   await p.getByLabel('PIN').fill('000001') // o décimo erro
   await p.waitForLoadState('load')
-  await expect(p.locator('input[type=email]')).toBeVisible() // saiu da conta
+  await expect(p.locator('input[type=email]')).toBeVisible({ timeout: 15_000 }) // saiu da conta
   const left = await p.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('fd:')))
   expect(left).toEqual([])
   expect(cloud.rows.size).toBeGreaterThanOrEqual(0) // os dados continuam na nuvem

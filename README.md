@@ -1,9 +1,180 @@
-# Finn — Dashboard de finanças pessoais
+<div align="center">
 
-Dashboard para acompanhar gastos, assinaturas e orçamentos. Visual inspirado no projeto "AI Finance Dashboard" (Behance): tema escuro, laranja/coral, cartões com mini-gráficos.
-React + TypeScript + Vite, gráficos com Recharts. Os dados ficam salvos no `localStorage` do navegador (nada sai da sua máquina).
+<img src="docs/img/hero.png" alt="Finn: painel de finanças pessoais, no computador e no celular" width="100%">
 
-## Funcionalidades
+# Finn
+
+**Finanças pessoais claras e seguras: gastos, cartões, contas, metas e investimentos num só lugar.**
+
+PWA instalável · funciona offline · integração com o banco via Open Finance · verificação em duas etapas
+
+![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-6-3178c6?logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-8-646cff?logo=vite&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-opcional-3ecf8e?logo=supabase&logoColor=white)
+![PWA](https://img.shields.io/badge/PWA-offline-orange)
+![Testes](https://img.shields.io/badge/testes-Playwright-45ba4b?logo=playwright&logoColor=white)
+
+</div>
+
+> **Sobre as imagens deste README:** todas as capturas usam uma persona **fictícia** (Marina Alves, bancos "Aurora" e "Horizonte", lojas e valores inventados) geradas automaticamente a partir de dados de exemplo. Nenhum dado real aparece aqui. Para refazê-las: `npm run screenshots`.
+
+## Por que o Finn?
+
+Planilhas cansam e apps de banco só mostram o próprio banco. O Finn junta tudo, **sem depender de ninguém**: você pode usá-lo só no navegador (os dados ficam no seu aparelho) ou ligar a nuvem para ter o mesmo painel no computador e no celular, com login, 2FA e leitura automática do extrato do banco.
+
+- **Entende o seu dinheiro**: separa salário fixo de renda variável, prevê o fim do mês e avisa quando algo foge do normal.
+- **Mostra para onde ele vai**: ranking por estabelecimento ("quanto gastei no Mercado Livre?") e grupos por tipo (padaria, delivery, farmácia).
+- **Ajuda a começar a investir**: reserva de emergência, simulador com imposto de renda regressivo, metas com prazo e uma área de conceitos em português simples.
+- **Leva a segurança a sério**: 2FA obrigatório, registro e bloqueio de tentativas de acesso, PIN do app, CSP e senha forte.
+
+## Visão geral
+
+<p align="center"><img src="docs/img/overview.png" alt="Visão geral com saldo, receitas, despesas, fluxo de caixa, contas e próximos pagamentos" width="92%"></p>
+
+Saldo do mês, receitas, despesas e assinaturas com variação sobre o mês anterior, fluxo de caixa, saldo das contas, próximos pagamentos (parcelas, faturas, assinaturas), **previsão do mês** e insights automáticos.
+
+## Um passeio pelo app
+
+### Transações, importação e transferências
+
+<table>
+<tr>
+<td width="50%"><img src="docs/img/transactions.png" alt="Lista de transações com busca, filtros e categorias"><br><sub><b>Transações</b>: busca, filtro por mês e tipo, categorias e cartão de cada compra.</sub></td>
+<td width="50%"><img src="docs/img/import.png" alt="Importação de extrato OFX/CSV com sugestão de categoria e duplicados"><br><sub><b>Importar extrato</b> (OFX ou CSV): categoria sugerida, duplicados e pagamentos de fatura sinalizados.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/img/transfers.png" alt="Aviso e revisão de transferências entre as próprias contas"><br><sub><b>Transferências entre contas</b>: o Pix para a própria reserva deixa de contar como despesa e receita.</sub></td>
+<td width="50%"><img src="docs/img/assistant.png" alt="Assistente respondendo perguntas sobre os gastos"><br><sub><b>Assistente</b>: perguntas em linguagem natural, respondidas localmente sobre os seus dados.</sub></td>
+</tr>
+</table>
+
+### Onde eu gasto
+
+<table>
+<tr>
+<td width="50%"><img src="docs/img/spending.png" alt="Ranking dos estabelecimentos onde mais se gasta"><br><sub>Ranking por estabelecimento: grafias diferentes da mesma loja viram uma só.</sub></td>
+<td width="50%"><img src="docs/img/spending-detail.png" alt="Detalhe de um grupo (padaria): total, média, maior compra e gráfico por mês"><br><sub>Busca por nome ou por tipo (<code>padaria, panificadora</code>): total, média, maior compra e evolução mensal. Dá para salvar como grupo.</sub></td>
+</tr>
+</table>
+
+### Cartões, contas, assinaturas e orçamentos
+
+<table>
+<tr>
+<td width="50%"><img src="docs/img/cards.png" alt="Cartões de crédito com fatura atual, limite e melhor dia de compra"><br><sub><b>Cartões</b>: fechamento, vencimento, limite disponível e melhor dia de compra.</sub></td>
+<td width="50%"><img src="docs/img/card-invoices.png" alt="Faturas do cartão: aberta, fechada, paga e futuras"><br><sub><b>Faturas</b>: aberta, fechada, vencida, paga e futuras; pagar a fatura não cria outra despesa.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/img/accounts.png" alt="Contas com saldo real e extrato"><br><sub><b>Contas</b>: saldo real (inicial + entradas − saídas) e extrato.</sub></td>
+<td width="50%"><img src="docs/img/subscriptions.png" alt="Assinaturas com custo mensal, anual e próxima renovação"><br><sub><b>Assinaturas</b>: custo mensal e anual, próxima renovação, cada cobrança vira despesa.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/img/installments.png" alt="Parcelas e dívidas com quanto falta e quando termina"><br><sub><b>Parcelas e dívidas</b>: o que já venceu, quanto falta e quando termina.</sub></td>
+<td width="50%"><img src="docs/img/budgets.png" alt="Orçamentos por categoria e nota de saúde financeira"><br><sub><b>Orçamentos</b> por categoria e <b>nota de saúde financeira</b> de 0 a 100.</sub></td>
+</tr>
+</table>
+
+### Investir: aprender antes de começar
+
+<table>
+<tr>
+<td width="50%"><img src="docs/img/invest-reserve.png" alt="Reserva de emergência com meta em meses de despesa"><br><sub><b>Reserva de emergência</b>: meta de 3 a 12 meses da sua despesa média real, quanto falta e em quanto tempo chega lá.</sub></td>
+<td width="50%"><img src="docs/img/invest-simulator.png" alt="Simulador comparando poupança, CDB, LCI/LCA e Tesouro"><br><sub><b>Simulador</b>: poupança, CDB, LCI/LCA, Tesouro Selic e IPCA+ com IR regressivo, aportes e inflação. Taxas do Banco Central com um clique.</sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/img/invest-goals.png" alt="Metas com prazo e quanto guardar por mês"><br><sub><b>Metas com prazo</b>: quanto guardar por mês, se você está no ritmo e atalho para o simulador.</sub></td>
+<td width="50%"><img src="docs/img/invest-concepts.png" alt="Conceitos de investimento explicados em português simples"><br><sub><b>Conceitos</b>: juros compostos, Selic, CDI, FGC, IR e mais, com exemplos calculados e trilha "Por onde começar".</sub></td>
+</tr>
+</table>
+
+> Conteúdo educativo: o Finn **não recomenda produtos** de investimento.
+
+### Conexão com o banco (Open Finance)
+
+<p align="center"><img src="docs/img/bank.png" alt="Sincronização bancária: lançamentos novos, conta criada e fatura ignorada" width="55%"></p>
+
+Com a nuvem ligada, o Finn traz contas, cartões e lançamentos do banco pelo **Meu Pluggy** (gratuito para uso pessoal). Cria a conta com saldo que fecha com o do banco, **não duplica** o que você já lançou à mão ou por arquivo e deixa de fora o pagamento da fatura. As credenciais ficam numa Edge Function do Supabase, nunca no navegador. Veja [docs/OPEN_FINANCE.md](docs/OPEN_FINANCE.md).
+
+### No celular
+
+<table>
+<tr>
+<td align="center" width="25%"><img src="docs/img/mobile-overview.png" alt="Visão geral no celular"><br><sub>Visão geral</sub></td>
+<td align="center" width="25%"><img src="docs/img/mobile-spending.png" alt="Onde gasto no celular"><br><sub>Onde gasto</sub></td>
+<td align="center" width="25%"><img src="docs/img/mobile-reserve.png" alt="Reserva de emergência no celular"><br><sub>Reserva</sub></td>
+<td align="center" width="25%"><img src="docs/img/mobile-simulator.png" alt="Simulador no celular"><br><sub>Simulador</sub></td>
+</tr>
+</table>
+
+Instalável como app (PWA), com barra de navegação inferior, e funciona **offline**.
+
+### Privacidade
+
+<p align="center"><img src="docs/img/privacy.png" alt="Modo privacidade escondendo os valores" width="70%"></p>
+
+O botão do olho esconde todos os valores na tela (útil em público ou para mostrar o app a alguém).
+
+## Segurança
+
+Tratada como requisito, não como extra. Detalhes e limites honestos em [docs/SEGURANCA.md](docs/SEGURANCA.md).
+
+<table>
+<tr>
+<td width="33%"><img src="docs/img/login.png" alt="Tela de login"><br><sub><b>Acesso restrito</b>: login por e-mail e senha (mínimo de 12 caracteres), sem cadastro público.</sub></td>
+<td width="33%"><img src="docs/img/mfa-setup.png" alt="Cadastro do aplicativo autenticador com QR code"><br><sub><b>2FA obrigatório</b>: no primeiro acesso é preciso cadastrar o aplicativo autenticador (QR code fictício).</sub></td>
+<td width="33%"><img src="docs/img/mfa-challenge.png" alt="Pedido do código de 6 dígitos"><br><sub>Em cada login, o código de 6 dígitos do aplicativo.</sub></td>
+</tr>
+<tr>
+<td width="33%"><img src="docs/img/security-alert.png" alt="Aviso de tentativas de acesso com senha errada"><br><sub><b>Alerta de tentativas</b>: avisa na Visão geral quando alguém errou a senha da sua conta.</sub></td>
+<td width="33%"><img src="docs/img/security.png" alt="Central de segurança: 2FA, PIN, acessos recentes e sessões"><br><sub><b>Central de segurança</b>: 2FA, PIN, acessos recentes (data, aparelho e IP) e "sair de todos os aparelhos".</sub></td>
+<td width="33%"><img src="docs/img/lock.png" alt="Tela de bloqueio por PIN"><br><sub><b>Bloqueio por PIN</b>: com atrasos crescentes a cada erro e apagamento local após 10 falhas.</sub></td>
+</tr>
+</table>
+
+| Camada | O que faz |
+| --- | --- |
+| **2FA (TOTP)** | Obrigatório; o banco recusa dados a quem não passou pelo segundo fator (regra em `supabase/security-2fa.sql`) |
+| **Tentativas de acesso** | Login passa por uma Edge Function que registra cada tentativa (IP, aparelho) e bloqueia por e-mail e por IP |
+| **Isolamento por usuário** | Row Level Security: cada pessoa só lê e grava os próprios registros |
+| **PIN do app** | PBKDF2 (150 mil iterações), atrasos progressivos, é uma trava de tela (não criptografa o navegador) |
+| **CSP** | Política de conteúdo gerada no build: sem scripts de terceiros, conexões só com o Supabase e o Banco Central |
+| **Sem terceiros no navegador** | Fonte hospedada junto do app; segredos do Open Finance só no servidor |
+| **Dependências** | Dependabot semanal |
+
+## Como funciona
+
+```mermaid
+flowchart LR
+  U([Você]) --> App["Finn (PWA)<br/>React + TypeScript"]
+  App <--> LS[("localStorage<br/>modo local")]
+  App <-- "login + 2FA" --> SB["Supabase<br/>Auth · Postgres com RLS"]
+  App -- "sincroniza por registro" --> SB
+  App -- "login" --> ACC["Edge Function access<br/>registro e bloqueio"]
+  ACC --> SB
+  App -- "sincronizar banco" --> PL["Edge Function pluggy"]
+  PL <--> MP["Meu Pluggy<br/>Open Finance"]
+  App -- "Selic · CDI · IPCA" --> BCB["API do Banco Central"]
+```
+
+- **Local-first**: tudo funciona sem internet e sem conta. Com a nuvem ligada, sincroniza **por registro** (não sobrescreve o banco inteiro), com resolução de conflitos.
+- **Lógica de negócio em funções puras** (faturas, parcelas, recorrências, transferências, simulador, importador), testadas sem navegador.
+- **Os servidores de teste são falsos e locais**: nenhum teste acessa o Supabase real.
+
+## Tecnologias
+
+React 19 · TypeScript · Vite · Recharts · lucide-react · vite-plugin-pwa (service worker, offline) · Supabase (Auth com MFA, Postgres com RLS, Edge Functions) · Playwright (unitários e ponta a ponta) · GitHub Actions + GitHub Pages.
+
+## Documentação
+
+| Documento | Conteúdo |
+| --- | --- |
+| [docs/SUPABASE.md](docs/SUPABASE.md) | Passo a passo para ligar a nuvem, o login e o 2FA |
+| [docs/OPEN_FINANCE.md](docs/OPEN_FINANCE.md) | Conectar o banco pelo Meu Pluggy |
+| [docs/SEGURANCA.md](docs/SEGURANCA.md) | Modelo de ameaças, proteções e limites |
+
+<details>
+<summary><b>Lista completa de funcionalidades</b> (clique para abrir)</summary>
 
 - **Visão geral**: saldo, receitas, despesas e taxa de poupança (com variação vs. mês anterior), gráfico dos últimos 6 meses, gastos por categoria, próximas cobranças e transações recentes.
 - **Insights**: alertas automáticos por regras (gastos acima da renda, categorias que subiram, orçamentos perto do limite, assinaturas renovando), em um card no estilo do projeto de referência.
@@ -27,7 +198,9 @@ React + TypeScript + Vite, gráficos com Recharts. Os dados ficam salvos no `loc
 - **Segurança** (detalhes em [docs/SEGURANCA.md](docs/SEGURANCA.md)): verificação em duas etapas obrigatória (aplicativo autenticador), registro e bloqueio de tentativas de acesso com aviso no app, sair de todos os aparelhos, bloqueio do app com PIN, política de conteúdo (CSP) e senha de 12+ caracteres. O banco pode exigir o 2FA por regra (`supabase/security-2fa.sql`).
 - **Para outras pessoas**: passo a passo de boas-vindas na Visão geral (some sozinho ao concluir ou ao dispensar), convite por e-mail com definição de senha, modo privacidade (esconde os valores), página de privacidade e termos e exclusão da própria conta (**Dados → Excluir minha conta**).
 
-## Rodando
+</details>
+
+## Rodando o projeto
 
 ```bash
 npm install
@@ -73,3 +246,11 @@ Ficam no navegador de cada aparelho (`localStorage`). Para levar de um aparelho 
 - Na primeira vez: `npx playwright install chromium`. Se você já tem um Chromium instalado, use `PW_CHROMIUM_PATH=/caminho/do/chromium npm test`.
 - Os testes usam um relógio fixo (29/09/2026), então o resultado não muda com o dia em que rodam.
 - No GitHub, o workflow de publicação roda o tipo-checagem e todos os testes antes de publicar; em pull requests, o workflow *Tests* roda a mesma verificação.
+
+## Refazendo as capturas deste README
+
+```bash
+npm run screenshots   # sobe o app com dados fictícios e salva docs/img/*.png
+```
+
+As capturas vêm de `tests/screenshots/` (dados em `seed.ts`, sempre fictícios e com relógio fixo), para que o visual da documentação acompanhe o app.

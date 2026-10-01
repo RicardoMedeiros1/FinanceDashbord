@@ -129,7 +129,7 @@ export function BankModal({ links, accounts, cards, state, onAdd, onRemove, onSy
         <h4>{links.length ? 'Conectar outro banco' : 'Conectar um banco'}</h4>
         <label>
           Nome do banco
-          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex.: Nubank" />
+          <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex.: Meu banco" />
         </label>
         <label>
           Item ID da conexão (Pluggy)

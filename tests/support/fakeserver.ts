@@ -16,11 +16,16 @@ export interface FakeCloud {
     /** simula a função "pluggy": `data` é o que a Pluggy tem; `error` faz a função responder com esse erro */
     pluggy: { data: any; error: string; requests: any[] }
     /** verificação em duas etapas: `enforce` imita a regra do banco (dados só com a sessão verificada) */
+    /** e-mail aceito no login (os testes usam o padrão; as capturas do README usam um fictício) */
+    email: string
+    /** instante usado nos registros de acesso (ms; null = agora) e IP mostrado no login */
+    fakeNow: number | null
+    loginIp: string
     /** registro de tentativas de acesso e sessões encerradas pelo "sair de todos os aparelhos" */
     attempts: Array<{ at: string; ok: boolean; locked: boolean; ip: string; ua: string; email: string }>
     dead: Set<string>
     issued: Set<string>
-    mfa: { enrolled: boolean; pending: boolean; code: string; enforce: boolean; aal2: Set<string>; counter: number; enrollError: string }
+    mfa: { enrolled: boolean; pending: boolean; code: string; enforce: boolean; aal2: Set<string>; counter: number; enrollError: string; qr: string }
   }
   close(): Promise<void>
 }
@@ -29,7 +34,7 @@ export interface FakeCloud {
 export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
   const rows = new Map<string, any>()
   const files = new Map<string, { buf: Buffer; type: string }>()
-  const state = { attempts: [] as Array<{ at: string; ok: boolean; locked: boolean; ip: string; ua: string; email: string }>, dead: new Set<string>(), issued: new Set<string>(), offline: false, seq: 0, version: 0, fetches: [] as string[], upserts: 0, password: 'pw', resets: [] as string[], deleted: false, pluggy: { data: null as any, error: '', requests: [] as any[] }, mfa: { enrolled: false, pending: false, code: '123456', enforce: false, aal2: new Set<string>(), counter: 0, enrollError: '' } }
+  const state = { email: 'me@x.com', fakeNow: null as number | null, loginIp: '127.0.0.1', attempts: [] as Array<{ at: string; ok: boolean; locked: boolean; ip: string; ua: string; email: string }>, dead: new Set<string>(), issued: new Set<string>(), offline: false, seq: 0, version: 0, fetches: [] as string[], upserts: 0, password: 'pw', resets: [] as string[], deleted: false, pluggy: { data: null as any, error: '', requests: [] as any[] }, mfa: { enrolled: false, pending: false, code: '123456', enforce: false, aal2: new Set<string>(), counter: 0, enrollError: '', qr: '' } }
 
   const srv = http.createServer((req, res) => {
     const u = new URL(req.url ?? '/', `http://localhost:${port}`)
@@ -56,8 +61,8 @@ export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
       }
       if (path === '/login') {
         const b = JSON.parse(body.toString())
-        const now = Date.now()
-        const note = (ok: boolean, locked: boolean) => state.attempts.unshift({ at: new Date(now).toISOString(), ok, locked, ip: '127.0.0.1', ua: String(req.headers['user-agent'] ?? ''), email: b.email })
+        const now = state.fakeNow ?? Date.now()
+        const note = (ok: boolean, locked: boolean) => state.attempts.unshift({ at: new Date(now).toISOString(), ok, locked, ip: state.loginIp, ua: String(req.headers['user-agent'] ?? ''), email: b.email })
         // imita a função "access": 5 erros seguidos em 15 minutos bloqueiam (um acerto zera)
         const lastOk = state.attempts.find((a) => a.ok && a.email === b.email)?.at ?? ''
         const fails = state.attempts.filter((a) => a.email === b.email && !a.ok && !a.locked && a.at > lastOk && now - Date.parse(a.at) < 15 * 60 * 1000)
@@ -65,7 +70,7 @@ export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
           note(false, true)
           return send(423, { message: 'Muitas tentativas erradas. Aguarde 15 minutos e tente de novo.', retryAfter: 900 })
         }
-        if (state.deleted || b.email !== 'me@x.com' || b.password !== state.password) {
+        if (state.deleted || b.email !== state.email || b.password !== state.password) {
           note(false, false)
           const left = 5 - (fails.length + 1)
           return send(401, { message: left > 0 && left <= 2 ? `E-mail ou senha incorretos. Restam ${left} ${left === 1 ? 'tentativa' : 'tentativas'} antes do bloqueio.` : 'E-mail ou senha incorretos.' })
@@ -89,7 +94,7 @@ export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
       }
       if (state.offline) return send(503, { error: 'offline' })
       if ((q.token !== 'tok' && !q.token?.startsWith('tok-')) || state.dead.has(q.token)) return send(401, {})
-      if (path === '/access-log') return send(200, state.attempts.filter((a) => a.email === 'me@x.com').slice(0, 30))
+      if (path === '/access-log') return send(200, state.attempts.filter((a) => a.email === state.email).slice(0, 30))
       if (path === '/signout-all') {
         for (const t of state.issued) state.dead.add(t)
         return send(200, { ok: true })
@@ -101,7 +106,7 @@ export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
         if (path === '/mfa/enroll') {
           if (m.enrollError) return send(400, { message: m.enrollError })
           m.pending = true
-          return send(200, { factorId: 'f1', qr: 'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>', secret: 'JBSWY3DPEHPK3PXP', uri: 'otpauth://totp/Finn:me%40x.com?secret=JBSWY3DPEHPK3PXP&issuer=Finn' })
+          return send(200, { factorId: 'f1', qr: m.qr || 'data:image/svg+xml;utf-8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>', secret: 'JBSWY3DPEHPK3PXP', uri: 'otpauth://totp/Finn:me%40x.com?secret=JBSWY3DPEHPK3PXP&issuer=Finn' })
         }
         if (path === '/mfa/verify') {
           const b = JSON.parse(body.toString() || '{}')

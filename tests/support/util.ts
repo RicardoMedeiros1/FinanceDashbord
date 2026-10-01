@@ -34,9 +34,9 @@ export interface Device {
 export async function device(
   browser: Browser,
   baseURL: string | undefined,
-  opts: { time?: string; viewport?: { width: number; height: number }; init?: () => void } = {},
+  opts: { time?: string; viewport?: { width: number; height: number }; init?: () => void; userAgent?: string } = {},
 ): Promise<Device> {
-  const ctx = await browser.newContext({ baseURL, viewport: opts.viewport ?? { width: 1360, height: 900 }, acceptDownloads: true })
+  const ctx = await browser.newContext({ baseURL, viewport: opts.viewport ?? { width: 1360, height: 900 }, acceptDownloads: true, ...(opts.userAgent ? { userAgent: opts.userAgent } : {}) })
   await ctx.clock.install({ time: new Date(opts.time ?? FIXED_NOW) })
   if (opts.init) await ctx.addInitScript(opts.init)
   const p = (await ctx.newPage()) as Device['p']

@@ -156,7 +156,6 @@ export function SecurityModal({ auth, email, onClose }: Props) {
 
   return (
     <Modal title="Segurança" onClose={onClose}>
-      <PinSection onClose={onClose} />
       {auth && (
         <section className="sec-block" aria-label="Verificação em duas etapas">
           <h4><ShieldCheck size={16} /> Verificação em duas etapas</h4>
@@ -169,6 +168,7 @@ export function SecurityModal({ auth, email, onClose }: Props) {
           <p className="muted small">Se perder o celular, quem administra o projeto no Supabase pode remover o fator em Authentication → Users, e você cadastra um novo no próximo login.</p>
         </section>
       )}
+      <PinSection onClose={onClose} />
       {auth && (
         <section className="sec-block" aria-label="Acessos recentes">
           <h4><ShieldAlert size={16} /> Acessos recentes</h4>

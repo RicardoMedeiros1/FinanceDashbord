@@ -526,7 +526,7 @@ main { min-width: 0; }
 .transfer-review .check .grow { display: flex; flex-direction: column; gap: 2px; }
 .transfer-route { display: inline-flex; align-items: center; gap: 6px; }
 .transfer-review input[type=checkbox] { margin-top: 4px; width: auto; }
-.transfer-banner .grow { flex: 1; min-width: 220px; }
+.transfer-banner .grow { flex: 1; min-width: 220px; display: block; }
 .transfer-review .badge { margin-left: 0; align-self: flex-start; }
 
 /* investir */
@@ -603,7 +603,8 @@ main { min-width: 0; }
 
 /* verificação em duas etapas */
 .login-card.wide { max-width: 460px; }
-.login-card h1 { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.login-card h1 { display: flex; align-items: flex-start; gap: 8px; }
+.login-card h1 svg { flex: none; margin-top: 5px; }
 .mfa-steps { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; }
 .mfa-qr { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .mfa-qr img { background: #fff; padding: 8px; border-radius: 12px; }
@@ -623,7 +624,7 @@ main { min-width: 0; }
 .access-list li.ok .access-mark { background: rgba(62, 207, 110, 0.18); color: var(--green); }
 .access-list li.bad .access-mark { background: rgba(232, 74, 69, 0.18); color: var(--red); }
 .alert-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--red) 55%, var(--border)); border-radius: 12px; background: rgba(232, 74, 69, 0.08); margin-bottom: 14px; }
-.alert-banner .grow { flex: 1; min-width: 220px; font-size: 14px; line-height: 1.45; }
+.alert-banner .grow { flex: 1; min-width: 220px; display: block; font-size: 14px; line-height: 1.45; }
 
 /* bloqueio por PIN */
 .lock-screen { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: var(--bg, #0b0b0b); overflow-y: auto; }

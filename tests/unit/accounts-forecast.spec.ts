@@ -1,6 +1,7 @@
 import { expect, test } from '../support/test'
 import { accountBalance, accountMovements, totalBalance } from '../../src/accounts'
 import { buildForecast } from '../../src/forecast'
+import { netWorthSeries, netWorthStats } from '../../src/networth'
 import type { Account, Card, Installment, Recurring, Subscription, Transaction, Transfer } from '../../src/types'
 
 const acc = (id: string, openingBalance: number, openingDate = '2026-09-01'): Account => ({ id, name: id.toUpperCase(), kind: 'checking', openingBalance, openingDate, color: '#fff' })
@@ -87,5 +88,48 @@ test.describe('previsão do mês', () => {
     expect(f.cash!.outflows).toBe(2000 + 300) // aluguel e TV saem da conta; a Netflix vai para a fatura do cartão
     expect(f.cash!.invoices.map((i) => [i.name, i.amount, i.date])).toEqual([['Fatura Nubank', 400, '2026-09-30']])
     expect(f.cash!.expected).toBe(6000 + 5000 - 2300 - 400)
+  })
+})
+
+test.describe('evolução do saldo', () => {
+  const a = acc('a', 1000, '2026-06-10')
+  const b: Account = { ...acc('b', 500, '2026-08-15'), kind: 'savings' }
+  const txs = [
+    tx('s1', '2026-06-20', 200, 'income', { accountId: 'a' }),
+    tx('s2', '2026-07-05', 100, 'expense', { accountId: 'a' }),
+    tx('s3', '2026-08-05', 300, 'income', { accountId: 'a' }),
+    tx('s4', '2026-09-10', 50, 'expense', { accountId: 'a' }),
+    tx('antes', '2026-05-01', 9999, 'income', { accountId: 'a' }), // anterior ao saldo inicial
+  ]
+  const transfers: Transfer[] = [{ id: 't', date: '2026-09-12', from: 'a', to: 'b', amount: 400, note: '', kind: 'transfer' }]
+
+  test('uma ponto por mês, a conta só entra a partir da sua data inicial e o mês atual vai até hoje', () => {
+    const s = netWorthSeries([a, b], txs, transfers, '2026-09-29', 12)
+    expect(s.map((p) => p.month)).toEqual(['2026-06', '2026-07', '2026-08', '2026-09']) // antes da primeira conta, nada
+    expect(s.map((p) => p.total)).toEqual([1200, 1100, 1400 + 500, 1350 + 500]) // set: 1400-50-400 + 500+400
+    expect(Object.keys(s[0].byAccount)).toEqual(['a'])
+    expect(Object.keys(s[3].byAccount)).toEqual(['a', 'b'])
+    expect(s[3].date).toBe('2026-09-29')
+    expect(s[0].date).toBe('2026-06-30')
+  })
+
+  test('mudanças comparam só contas que existem nos dois meses e a transferência não vira ganho', () => {
+    const s = netWorthSeries([a, b], txs, transfers, '2026-09-29', 12)
+    const st = netWorthStats(s, [a, b])!
+    expect(st.current).toBe(1850)
+    // ago→set: a: 1400→950 (−450), b: 500→900 (+400) = −50 (só a despesa); jul→ago: só a (+300); jun→jul: −100
+    expect(st.sinceLastMonth).toBe(-50)
+    expect(st.sinceStart).toBe(-100 + 300 - 50)
+    expect(st.best).toEqual({ month: '2026-08', change: 300 })
+    expect(st.worst).toEqual({ month: '2026-07', change: -100 })
+    expect(st.savedShare).toBeCloseTo(900 / 1850)
+  })
+
+  test('sem contas não há série; com uma só ponto não há variação', () => {
+    expect(netWorthSeries([], txs, [], '2026-09-29')).toEqual([])
+    expect(netWorthStats([], [])).toBeNull()
+    const one = netWorthSeries([acc('z', 100, '2026-09-20')], [], [], '2026-09-29')
+    expect(one).toHaveLength(1)
+    expect(netWorthStats(one, [])).toMatchObject({ current: 100, sinceLastMonth: null, best: null })
   })
 })

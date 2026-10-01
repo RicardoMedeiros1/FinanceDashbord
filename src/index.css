@@ -640,3 +640,10 @@ main { min-width: 0; }
 .group-limit-form input { flex: 1; min-width: 140px; }
 .budget-groups { display: grid; gap: 12px; margin-top: 18px; }
 .budget-groups h3 { margin: 0; }
+
+/* evolução do saldo */
+.networth { margin: 14px 0; }
+.networth-stats { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 6px 0 12px; }
+.networth-stats > div { display: flex; flex-direction: column; gap: 2px; }
+.networth-stats strong { font-size: 20px; }
+.networth-note { margin: 8px 0 0; }

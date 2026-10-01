@@ -3,6 +3,7 @@ import { brl, daysUntil, formatDate, inMonth, installmentStatus, monthKey, month
 import { accountBalance } from './accounts'
 import { cardInvoices, cardSummary } from './cards'
 import { buildForecast } from './forecast'
+import { netWorthSeries, netWorthStats } from './networth'
 import type { Forecast } from './forecast'
 import { expensesIn, groupLimits, searchSpending, SUGGESTIONS as SPEND_GROUPS, squash } from './spending'
 import type { Account, Budget, Card, CategoryId, Installment, Recurring, SpendGroup, Subscription, Transaction, Transfer } from './types'
@@ -283,6 +284,13 @@ export function answer(question: string, txs: Transaction[], subs: Subscription[
   const expense = sumBy(list, 'expense')
   const byCat = [...spendByCategory(list)].sort((a, b) => b[1] - a[1])
 
+  if (/patrimonio|evolucao do saldo|saldo evoluiu|quanto cresceu/.test(q)) {
+    const accs = extra.accounts ?? []
+    const st = netWorthStats(netWorthSeries(accs, txs, extra.transfers ?? []), accs)
+    if (!st) return 'Você ainda não cadastrou contas. Cadastre em Cartões e contas → Contas para acompanhar a evolução do saldo.'
+    const sg = (n: number) => `${n >= 0 ? '+' : '−'} ${brl(Math.abs(n))}`
+    return [`Saldo nas contas hoje: ${brl(st.current)}.`, st.sinceLastMonth !== null ? `No último mês: ${sg(st.sinceLastMonth)}.` : 'Ainda não há um mês anterior para comparar.', st.months > 2 ? `Desde ${monthLong(netWorthSeries(accs, txs, extra.transfers ?? [])[0].month).toLowerCase()}: ${sg(st.sinceStart)}.` : ''].filter(Boolean).join('\n') + '\nVeja o gráfico em Cartões e contas → Contas.'
+  }
   if (/saldo em conta|minhas contas|saldo das contas|quanto tenho/.test(q)) {
     const accs = extra.accounts ?? []
     if (!accs.length) return 'Você ainda não cadastrou contas. Cadastre em Cartões e contas → Contas, com o saldo de hoje.'

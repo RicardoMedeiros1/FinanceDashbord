@@ -138,3 +138,36 @@ test('contas: saldo real, transferência, pagamento de fatura e previsão do mê
   expect(await p.ls('fd:transfers')).toHaveLength(0) // a transferência com a Poupança foi removida
   expect(p.errors).toEqual([])
 })
+
+test('evolução do saldo: gráfico mês a mês, variação e aviso quando só há um mês', async ({ browser, baseURL }) => {
+  const { p } = await device(browser, baseURL, {
+    init: () => {
+      if (sessionStorage.getItem('seeded')) return
+      sessionStorage.setItem('seeded', '1')
+      localStorage.setItem('fd:accounts', JSON.stringify([
+        { id: 'a', name: 'Conta Aurora', kind: 'checking', openingBalance: 1000, openingDate: '2026-06-10', color: '#3b6ef5' },
+        { id: 'b', name: 'Reserva', kind: 'savings', openingBalance: 500, openingDate: '2026-08-15', color: '#3ecf6e' },
+      ]))
+      localStorage.setItem('fd:txs', JSON.stringify([
+        { id: '1', date: '2026-07-05', description: 'Mercado', amount: 100, type: 'expense', category: 'alimentacao', accountId: 'a' },
+        { id: '2', date: '2026-08-05', description: 'Salário', amount: 300, type: 'income', category: 'salario', accountId: 'a' },
+        { id: '3', date: '2026-09-10', description: 'Padaria', amount: 50, type: 'expense', category: 'alimentacao', accountId: 'a' },
+      ]))
+    },
+  })
+  await p.goto('./#/cards/contas')
+  const card = p.getByLabel('Evolução do saldo')
+  await expect(card).toBeVisible()
+  expect(norm(await card.getByTestId('nw-current').textContent())).toBe('R$ 1.650,00') // 1000−100+300−50 + 500
+  expect(norm(await card.getByTestId('nw-month').textContent())).toBe('− R$ 50,00')
+  await expect(card.getByTestId('nw-saved')).toHaveText('30%')
+  await expect(card.locator('.recharts-area')).toBeVisible()
+  await expect(card).toContainText('Melhor mês')
+
+  // uma conta recém-criada: sem gráfico, com explicação
+  await p.evaluate(() => {
+    localStorage.setItem('fd:accounts', JSON.stringify([{ id: 'z', name: 'Nova', kind: 'checking', openingBalance: 10, openingDate: '2026-09-20', color: '#fff' }]))
+  })
+  await p.reload()
+  await expect(p.getByLabel('Evolução do saldo')).toContainText('pelo menos dois meses')
+})

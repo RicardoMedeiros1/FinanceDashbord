@@ -5,6 +5,7 @@ import { brl, formatDate } from '../lib'
 import type { Account, Transaction, Transfer } from '../types'
 import { AccountForm } from './AccountForm'
 import { Modal } from './Modal'
+import { NetWorthCard } from './NetWorthCard'
 import { Money } from './Money'
 import { TransferForm } from './TransferForm'
 
@@ -47,6 +48,7 @@ export function AccountsTab({ accounts, txs, transfers, onSave, onDelete, onTran
             <span className="muted">Saldo total nas contas</span>
             <div className="stat-value"><Money value={total} /></div>
           </div>
+          <NetWorthCard accounts={accounts} txs={txs} transfers={transfers} />
           <div className="grid cardgrid">
             {accounts.map((a) => {
               const bal = accountBalance(a, txs, transfers, accounts)

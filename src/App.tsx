@@ -1,4 +1,4 @@
-import { Database, Eye, EyeOff, Landmark, Lock, Plus, ShieldAlert, X } from 'lucide-react'
+import { Database, Eye, EyeOff, FileText, Landmark, Lock, Plus, ShieldAlert, X } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { cloudReceiptStore, localReceiptStore, prepareFile, type ReceiptMeta } from './cloud/receipts'
 import { applyChanges, COLS, countLocal, SyncEngine, type Change, type Col, type Collections, type SyncStatus } from './cloud/sync'
@@ -7,6 +7,7 @@ import { BankModal, type BankState } from './components/BankModal'
 import { DataModal } from './components/DataModal'
 import { failuresToReport, type AccessEntry } from './access'
 import { useLock } from './components/LockGate'
+import { ReportModal } from './components/ReportModal'
 import { SecurityModal } from './components/SecurityModal'
 import { InstallmentDetail } from './components/InstallmentDetail'
 import { Onboarding, type OnboardingStep } from './components/Onboarding'
@@ -125,6 +126,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     })
   const [form, setForm] = useState<{ tx?: Transaction; repeat?: boolean; income?: boolean } | null>(null)
   const [dataOpen, setDataOpen] = useState(false)
+  const [reportOpen, setReportOpen] = useState(false)
   const [securityOpen, setSecurityOpen] = useState(false)
   const lock = useLock()
   const [tick, setTick] = useState(0)
@@ -488,6 +490,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             {lock?.enabled && <button className="icon-btn" onClick={lock.lockNow} aria-label="Bloquear o app" title="Bloquear o app"><Lock size={16} /></button>}
             {cloud && <SyncBadge status={status} onClick={() => void engineRef.current?.sync()} />}
             {cloud && <button className="icon-btn" onClick={() => setBankOpen(true)} aria-label="Bancos (Open Finance)" title="Bancos (Open Finance)"><Landmark size={16} /></button>}
+            <button className="icon-btn" onClick={() => setReportOpen(true)} aria-label="Relatório do mês" title="Relatório do mês"><FileText size={16} /></button>
             <button className="btn ghost" onClick={() => setDataOpen(true)}><Database size={15} /> Dados</button>
             <button className="btn light" onClick={() => setForm({})}><Plus size={16} /> Nova transação</button>
           </div>
@@ -703,6 +706,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
           }}
         />
       )}
+      {reportOpen && <ReportModal data={{ txs, subs, budgets, groups, accounts, transfers }} onClose={() => setReportOpen(false)} />}
       {securityOpen && <SecurityModal auth={cloud?.auth} email={cloud?.email} onClose={() => setSecurityOpen(false)} />}
       {form && (
         <Modal title={form.tx ? 'Editar transação' : form.repeat ? 'Nova recorrente' : 'Nova transação'} onClose={() => setForm(null)}>

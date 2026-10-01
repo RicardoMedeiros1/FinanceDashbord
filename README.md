@@ -26,13 +26,16 @@ Planilhas cansam e apps de banco só mostram o próprio banco. O Finn junta tudo
 - **Entende o seu dinheiro**: separa salário fixo de renda variável, prevê o fim do mês e avisa quando algo foge do normal.
 - **Mostra para onde ele vai**: ranking por estabelecimento ("quanto gastei no Mercado Livre?") e grupos por tipo (padaria, delivery, farmácia).
 - **Ajuda a começar a investir**: reserva de emergência, simulador com imposto de renda regressivo, metas com prazo e uma área de conceitos em português simples.
+- **Cuida de você**: alertas de cobrança repetida e de compra fora do padrão, limites mensais por grupo de gastos e relatório do mês em PDF.
 - **Leva a segurança a sério**: 2FA obrigatório, registro e bloqueio de tentativas de acesso, PIN do app, CSP e senha forte.
 
 ## Visão geral
 
 <p align="center"><img src="docs/img/overview.png" alt="Visão geral com saldo, receitas, despesas, fluxo de caixa, contas e próximos pagamentos" width="92%"></p>
 
-Saldo do mês, receitas, despesas e assinaturas com variação sobre o mês anterior, fluxo de caixa, saldo das contas, próximos pagamentos (parcelas, faturas, assinaturas), **previsão do mês** e insights automáticos.
+Saldo do mês, receitas, despesas e assinaturas com variação sobre o mês anterior, fluxo de caixa, saldo das contas, próximos pagamentos (parcelas, faturas, assinaturas), **previsão do mês**, **alertas** e insights automáticos.
+
+> **Alertas** (cartão no topo, cada um pode ser dispensado): compra bem acima do que você costuma pagar naquele lugar, a mesma cobrança duas vezes em até 2 dias, assinatura que mudou de valor e gasto do mês acima do ritmo dos 3 meses anteriores. Na imagem, uma cobrança repetida numa ótica fictícia.
 
 ## Um passeio pelo app
 
@@ -58,6 +61,8 @@ Saldo do mês, receitas, despesas e assinaturas com variação sobre o mês ante
 </tr>
 </table>
 
+Cada grupo salvo aceita um **limite mensal**: o card mostra o quanto já foi gasto, avisa aos 80% e ao estourar (na Visão geral e no assistente) e o limite também aparece em *Orçamentos*.
+
 ### Cartões, contas, assinaturas e orçamentos
 
 <table>
@@ -66,14 +71,20 @@ Saldo do mês, receitas, despesas e assinaturas com variação sobre o mês ante
 <td width="50%"><img src="docs/img/card-invoices.png" alt="Faturas do cartão: aberta, fechada, paga e futuras"><br><sub><b>Faturas</b>: aberta, fechada, vencida, paga e futuras; pagar a fatura não cria outra despesa.</sub></td>
 </tr>
 <tr>
-<td width="50%"><img src="docs/img/accounts.png" alt="Contas com saldo real e extrato"><br><sub><b>Contas</b>: saldo real (inicial + entradas − saídas) e extrato.</sub></td>
+<td width="50%"><img src="docs/img/accounts.png" alt="Contas com saldo real, extrato e evolução do saldo mês a mês"><br><sub><b>Contas</b>: saldo real (inicial + entradas − saídas), extrato e <b>evolução do saldo mês a mês</b> (transferências entre contas não viram "ganho").</sub></td>
 <td width="50%"><img src="docs/img/subscriptions.png" alt="Assinaturas com custo mensal, anual e próxima renovação"><br><sub><b>Assinaturas</b>: custo mensal e anual, próxima renovação, cada cobrança vira despesa.</sub></td>
 </tr>
 <tr>
 <td width="50%"><img src="docs/img/installments.png" alt="Parcelas e dívidas com quanto falta e quando termina"><br><sub><b>Parcelas e dívidas</b>: o que já venceu, quanto falta e quando termina.</sub></td>
-<td width="50%"><img src="docs/img/budgets.png" alt="Orçamentos por categoria e nota de saúde financeira"><br><sub><b>Orçamentos</b> por categoria e <b>nota de saúde financeira</b> de 0 a 100.</sub></td>
+<td width="50%"><img src="docs/img/budgets.png" alt="Orçamentos por categoria, limites por grupo e nota de saúde financeira"><br><sub><b>Orçamentos</b> por categoria, <b>limites por grupo</b> e <b>nota de saúde financeira</b> de 0 a 100.</sub></td>
 </tr>
 </table>
+
+### Relatório do mês
+
+<p align="center"><img src="docs/img/report.png" alt="Relatório do mês com receitas, despesas, categorias, estabelecimentos, orçamentos e limites" width="60%"></p>
+
+O botão de documento no topo abre o resumo de qualquer mês: receitas, despesas e saldo com variação sobre o mês anterior, para onde foi o dinheiro, onde mais gastou, maiores despesas, orçamentos e limites, saldo nas contas e assinaturas. **Imprimir / salvar PDF** gera uma versão em papel claro, só com o relatório.
 
 ### Investir: aprender antes de começar
 
@@ -196,6 +207,10 @@ React 19 · TypeScript · Vite · Recharts · lucide-react · vite-plugin-pwa (s
 - **Orçamentos**: limite por categoria com barra de progresso.
 - **Bancos (Open Finance)**: com a nuvem ligada, traz contas, cartões e transações do banco pelo Meu Pluggy (gratuito para uso pessoal), sem duplicar o que você já lançou. As credenciais ficam numa Edge Function do Supabase. Veja [docs/OPEN_FINANCE.md](docs/OPEN_FINANCE.md).
 - **Segurança** (detalhes em [docs/SEGURANCA.md](docs/SEGURANCA.md)): verificação em duas etapas obrigatória (aplicativo autenticador), registro e bloqueio de tentativas de acesso com aviso no app, sair de todos os aparelhos, bloqueio do app com PIN, política de conteúdo (CSP) e senha de 12+ caracteres. O banco pode exigir o 2FA por regra (`supabase/security-2fa.sql`).
+- **Limites por grupo**: em *Transações → Onde gasto*, cada grupo salvo pode ter um limite mensal, com barra de progresso, aviso aos 80% e ao estourar (também em *Orçamentos*, nos insights e no assistente).
+- **Evolução do saldo** (*Cartões e contas → Contas*): gráfico do saldo total no fim de cada mês, variação no último mês, no período, melhor/pior mês e parte em poupança. Só compara contas que já existiam, então abrir uma conta nova ou transferir entre contas não parece ganho.
+- **Alertas** (Visão geral): compra fora do padrão, cobrança repetida, assinatura que mudou de preço e gasto acima do ritmo; dá para dispensar e o assistente lista todos (*"tenho algum alerta?"*).
+- **Relatório do mês**: resumo de qualquer mês (botão de documento no topo), com navegação entre meses e impressão/PDF.
 - **Para outras pessoas**: passo a passo de boas-vindas na Visão geral (some sozinho ao concluir ou ao dispensar), convite por e-mail com definição de senha, modo privacidade (esconde os valores), página de privacidade e termos e exclusão da própria conta (**Dados → Excluir minha conta**).
 
 </details>

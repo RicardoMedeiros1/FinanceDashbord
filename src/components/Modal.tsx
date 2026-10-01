@@ -7,12 +7,14 @@ interface Props {
   children: ReactNode
   /** false: não fecha ao clicar fora (decisões obrigatórias). */
   dismissable?: boolean
+  /** conteúdo largo (relatórios, tabelas) */
+  wide?: boolean
 }
 
-export function Modal({ title, onClose, children, dismissable = true }: Props) {
+export function Modal({ title, onClose, children, dismissable = true, wide = false }: Props) {
   return (
     <div className="overlay" onMouseDown={dismissable ? onClose : undefined}>
-      <div className="modal" role="dialog" aria-label={title} onMouseDown={(e) => e.stopPropagation()}>
+      <div className={`modal${wide ? ' wide' : ''}`} role="dialog" aria-label={title} onMouseDown={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h3>{title}</h3>
           {dismissable && (

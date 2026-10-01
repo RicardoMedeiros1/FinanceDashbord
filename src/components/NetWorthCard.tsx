@@ -56,14 +56,14 @@ export function NetWorthCard({ accounts, txs, transfers }: { accounts: Account[]
               </defs>
               <CartesianGrid stroke="#2a2a2a" vertical={false} />
               <XAxis dataKey="name" stroke="#6b6b6b" tickLine={false} axisLine={false} fontSize={12} />
-              <YAxis stroke="#6b6b6b" tickLine={false} axisLine={false} fontSize={12} width={54} tickFormatter={(v) => brlShort(Number(v))} />
+              <YAxis stroke="#6b6b6b" tickLine={false} axisLine={false} fontSize={12} width={66} tickFormatter={(v) => brlShort(Number(v))} />
               <Tooltip
                 cursor={{ stroke: '#555' }}
                 contentStyle={{ background: '#161616', border: '1px solid #2c2c2c', borderRadius: 10 }}
                 labelFormatter={(_, p) => (p?.[0]?.payload?.month ? monthLong(p[0].payload.month) : '')}
                 formatter={(v) => [brl(Number(v)), 'Saldo']}
               />
-              <Area dataKey="total" type="monotone" stroke="#e0600f" strokeWidth={2} fill="url(#nw)" />
+              <Area isAnimationActive={false} dataKey="total" type="monotone" stroke="#e0600f" strokeWidth={2} fill="url(#nw)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>

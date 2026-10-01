@@ -52,6 +52,15 @@ test('capturas do app (modo local, dados fictícios)', async ({ browser, baseURL
   await go(p, '#/budgets')
   await shot(p, 'budgets', true)
 
+  // relatório do mês
+  await go(p, '#/')
+  await p.setViewportSize({ width: 1440, height: 1750 })
+  await p.getByRole('button', { name: 'Relatório do mês' }).click()
+  await p.waitForTimeout(600)
+  await p.getByRole('dialog', { name: 'Relatório do mês' }).screenshot({ path: `${OUT}/report.png` })
+  await p.getByRole('button', { name: 'Fechar' }).click()
+  await p.setViewportSize({ width: 1440, height: 900 })
+
   await go(p, '#/invest')
   await shot(p, 'invest-reserve', true)
   await go(p, '#/invest/metas')

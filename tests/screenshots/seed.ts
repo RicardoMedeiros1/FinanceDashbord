@@ -56,8 +56,23 @@ export function buildSeed() {
     if (m % 2 === 1 && ok(22)) income(iso(2026, m, 22), 'Projeto Casa Verde', between(700, 1300), 'variavel')
   }
 
+  // uma cobrança que parece repetida (dispara um alerta na visão geral)
+  add('2026-09-27', 'Ótica Visão', 289, 'saude', { accountId: undefined, cardId: GOLD })
+  add('2026-09-28', 'Ótica Visão', 289, 'saude', { accountId: undefined, cardId: GOLD })
+
   return {
-    'fd:profile': [{ id: 'me', name: PERSONA.name, onboardingHidden: true }],
+    'fd:profile': [
+      {
+        id: 'me',
+        name: PERSONA.name,
+        onboardingHidden: true,
+        groups: [
+          { id: 'g-padaria', name: 'Padaria', terms: 'padaria, panificadora, padoca', limit: 120 },
+          { id: 'g-mercado', name: 'Supermercado', terms: 'mercado central', limit: 1100 },
+          { id: 'g-delivery', name: 'Restaurantes', terms: 'cantina', limit: 400 },
+        ],
+      },
+    ],
     'fd:accounts': [
       { id: ACC, name: 'Conta Aurora', kind: 'checking', openingBalance: 3200, openingDate: '2026-04-01', color: '#3b6ef5' },
       { id: SAV, name: 'Reserva Aurora', kind: 'savings', openingBalance: 9000, openingDate: '2026-04-01', color: '#3ecf6e' },

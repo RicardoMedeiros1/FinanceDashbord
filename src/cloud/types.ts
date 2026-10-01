@@ -1,3 +1,4 @@
+import type { AccessEntry } from '../access'
 import type { BankSyncResponse } from '../openfinance'
 
 /** Uma linha da tabela `records`: qualquer item do app (transação, assinatura, meta...). */
@@ -59,6 +60,10 @@ export interface Auth {
   mfaVerify(code: string, factorId?: string): Promise<void>
   /** Remove o aplicativo autenticador atual (para cadastrar outro). Exige a sessão verificada. */
   mfaUnenroll(): Promise<void>
+  /** Tentativas de acesso recentes à conta (mais novas primeiro). Falha se o registro não foi ativado no servidor. */
+  accessLog(): Promise<AccessEntry[]>
+  /** Encerra a sessão em TODOS os aparelhos (inclusive este). */
+  signOutEverywhere(): Promise<void>
   onChange(cb: (s: Session | null) => void): () => void
   remote(userId: string): Remote
 }

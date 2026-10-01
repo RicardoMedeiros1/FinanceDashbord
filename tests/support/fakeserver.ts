@@ -16,6 +16,10 @@ export interface FakeCloud {
     /** simula a função "pluggy": `data` é o que a Pluggy tem; `error` faz a função responder com esse erro */
     pluggy: { data: any; error: string; requests: any[] }
     /** verificação em duas etapas: `enforce` imita a regra do banco (dados só com a sessão verificada) */
+    /** registro de tentativas de acesso e sessões encerradas pelo "sair de todos os aparelhos" */
+    attempts: Array<{ at: string; ok: boolean; locked: boolean; ip: string; ua: string; email: string }>
+    dead: Set<string>
+    issued: Set<string>
     mfa: { enrolled: boolean; pending: boolean; code: string; enforce: boolean; aal2: Set<string>; counter: number; enrollError: string }
   }
   close(): Promise<void>
@@ -25,7 +29,7 @@ export interface FakeCloud {
 export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
   const rows = new Map<string, any>()
   const files = new Map<string, { buf: Buffer; type: string }>()
-  const state = { offline: false, seq: 0, version: 0, fetches: [] as string[], upserts: 0, password: 'pw', resets: [] as string[], deleted: false, pluggy: { data: null as any, error: '', requests: [] as any[] }, mfa: { enrolled: false, pending: false, code: '123456', enforce: false, aal2: new Set<string>(), counter: 0, enrollError: '' } }
+  const state = { attempts: [] as Array<{ at: string; ok: boolean; locked: boolean; ip: string; ua: string; email: string }>, dead: new Set<string>(), issued: new Set<string>(), offline: false, seq: 0, version: 0, fetches: [] as string[], upserts: 0, password: 'pw', resets: [] as string[], deleted: false, pluggy: { data: null as any, error: '', requests: [] as any[] }, mfa: { enrolled: false, pending: false, code: '123456', enforce: false, aal2: new Set<string>(), counter: 0, enrollError: '' } }
 
   const srv = http.createServer((req, res) => {
     const u = new URL(req.url ?? '/', `http://localhost:${port}`)
@@ -52,18 +56,44 @@ export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
       }
       if (path === '/login') {
         const b = JSON.parse(body.toString())
-        if (state.deleted || b.email !== 'me@x.com' || b.password !== state.password) return send(401, { error: 'bad' })
+        const now = Date.now()
+        const note = (ok: boolean, locked: boolean) => state.attempts.unshift({ at: new Date(now).toISOString(), ok, locked, ip: '127.0.0.1', ua: String(req.headers['user-agent'] ?? ''), email: b.email })
+        // imita a função "access": 5 erros seguidos em 15 minutos bloqueiam (um acerto zera)
+        const lastOk = state.attempts.find((a) => a.ok && a.email === b.email)?.at ?? ''
+        const fails = state.attempts.filter((a) => a.email === b.email && !a.ok && !a.locked && a.at > lastOk && now - Date.parse(a.at) < 15 * 60 * 1000)
+        if (fails.length >= 5) {
+          note(false, true)
+          return send(423, { message: 'Muitas tentativas erradas. Aguarde 15 minutos e tente de novo.', retryAfter: 900 })
+        }
+        if (state.deleted || b.email !== 'me@x.com' || b.password !== state.password) {
+          note(false, false)
+          const left = 5 - (fails.length + 1)
+          return send(401, { message: left > 0 && left <= 2 ? `E-mail ou senha incorretos. Restam ${left} ${left === 1 ? 'tentativa' : 'tentativas'} antes do bloqueio.` : 'E-mail ou senha incorretos.' })
+        }
+        note(true, false)
         // com 2FA cada login é uma sessão própria (começa sem a verificação)
         const token = state.mfa.enrolled || state.mfa.enforce ? `tok-${++state.mfa.counter}` : 'tok'
+        state.dead.delete(token)
+        state.issued.add(token)
         return send(200, { userId: 'u1', token })
       }
       if (path === '/reset') {
         state.resets.push(JSON.parse(body.toString()).email)
         return send(200, { ok: true })
       }
-      if (path === '/recover') return send(200, { userId: 'u1', token: state.mfa.enrolled || state.mfa.enforce ? `tok-${++state.mfa.counter}` : 'tok' }) // qualquer "link" vale
+      if (path === '/recover') {
+        const token = state.mfa.enrolled || state.mfa.enforce ? `tok-${++state.mfa.counter}` : 'tok'
+        state.dead.delete(token)
+        state.issued.add(token)
+        return send(200, { userId: 'u1', token }) // qualquer "link" vale
+      }
       if (state.offline) return send(503, { error: 'offline' })
-      if (q.token !== 'tok' && !q.token?.startsWith('tok-')) return send(401, {})
+      if ((q.token !== 'tok' && !q.token?.startsWith('tok-')) || state.dead.has(q.token)) return send(401, {})
+      if (path === '/access-log') return send(200, state.attempts.filter((a) => a.email === 'me@x.com').slice(0, 30))
+      if (path === '/signout-all') {
+        for (const t of state.issued) state.dead.add(t)
+        return send(200, { ok: true })
+      }
       if (path.startsWith('/mfa/')) {
         const m = state.mfa
         // sem simular o 2FA (testes antigos), a sessão conta como cadastrada e verificada

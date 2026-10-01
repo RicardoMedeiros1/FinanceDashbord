@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { friendlyAuthError } from './authError'
+import type { AccessEntry } from '../access'
 import type { Auth, Remote, Row, Session } from './types'
 
 const BUCKET = 'receipts'
@@ -93,6 +94,27 @@ export function createSupabaseAuth(url: string, key: string): Auth {
       return toSession(data.session)
     },
     async signIn(email, password) {
+      // O login passa pela função "access": ela anota a tentativa e bloqueia depois de 5 erros seguidos.
+      let res: Response | null = null
+      try {
+        res = await fetch(`${url.replace(/\/+$/, '')}/functions/v1/access`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
+          body: JSON.stringify({ action: 'login', email, password }),
+        })
+      } catch {
+        res = null
+      }
+      if (res?.ok) {
+        const j = (await res.json().catch(() => null)) as { session?: { access_token: string; refresh_token: string }; error?: string; message?: string } | null
+        if (j?.session) {
+          const { error } = await client.auth.setSession(j.session)
+          if (error) throw new Error(friendlyAuthError(error))
+          return
+        }
+        if (j?.error && j.error !== 'not_configured') throw new Error(j.message ?? 'E-mail ou senha incorretos.')
+      }
+      // Função não publicada (ou fora do ar): entra direto, sem registro nem bloqueio do app.
       const { error } = await client.auth.signInWithPassword({ email, password })
       if (error) throw new Error(friendlyAuthError(error))
     },
@@ -122,6 +144,15 @@ export function createSupabaseAuth(url: string, key: string): Auth {
       const { error } = await client.rpc('delete_my_account')
       if (error) throw new Error('Não foi possível excluir a conta agora. Tente de novo mais tarde.')
       await client.auth.signOut()
+    },
+    async accessLog() {
+      const { data, error } = await client.from('login_attempts').select('at,ok,locked,ip,ua').order('at', { ascending: false }).limit(30)
+      if (error) throw new Error('O registro de acessos ainda não foi ativado (rode supabase/security-log.sql no Supabase).')
+      return (data ?? []) as AccessEntry[]
+    },
+    async signOutEverywhere() {
+      const { error } = await client.auth.signOut({ scope: 'global' })
+      if (error) throw new Error(friendlyAuthError(error))
     },
     async mfaStatus() {
       // lê só a sessão guardada (sem rede): o nível vem do próprio token

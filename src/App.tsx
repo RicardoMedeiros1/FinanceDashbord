@@ -1,10 +1,11 @@
-import { Database, Eye, EyeOff, Landmark, Plus } from 'lucide-react'
+import { Database, Eye, EyeOff, Landmark, Plus, ShieldAlert, X } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { cloudReceiptStore, localReceiptStore, prepareFile, type ReceiptMeta } from './cloud/receipts'
 import { applyChanges, COLS, countLocal, SyncEngine, type Change, type Col, type Collections, type SyncStatus } from './cloud/sync'
 import type { Auth } from './cloud/types'
 import { BankModal, type BankState } from './components/BankModal'
 import { DataModal } from './components/DataModal'
+import { failuresToReport, type AccessEntry } from './access'
 import { SecurityModal } from './components/SecurityModal'
 import { InstallmentDetail } from './components/InstallmentDetail'
 import { Onboarding, type OnboardingStep } from './components/Onboarding'
@@ -331,6 +332,31 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     setAccounts((l) => l.filter((a) => a.id !== id))
   }
 
+  // ---------- aviso de tentativas de acesso erradas ----------
+  const [attempts, setAttempts] = useState<AccessEntry[]>([])
+  const seenKey = cloud ? `fd:acc-seen:${cloud.userId}` : ''
+  const [seen, setSeen] = useState(() => (seenKey ? localStorage.getItem(seenKey) ?? '' : ''))
+  useEffect(() => {
+    if (!cloud) return
+    let alive = true
+    const load = () => cloud.auth.accessLog().then((l) => alive && setAttempts(l), () => undefined) // sem o registro ativado: sem aviso
+    void load()
+    const t = setInterval(load, 5 * 60 * 1000)
+    const onVisible = () => document.visibilityState === 'visible' && void load()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      alive = false
+      clearInterval(t)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [cloud])
+  const alerts = useMemo(() => failuresToReport(attempts, seen), [attempts, seen])
+  const dismissAlerts = () => {
+    const latest = alerts[0]?.at ?? ''
+    if (latest && seenKey) localStorage.setItem(seenKey, latest)
+    setSeen(latest)
+  }
+
   // ---------- bancos (Open Finance / Meu Pluggy) ----------
   const [bankOpen, setBankOpen] = useState(false)
   const [bankState, setBankState] = useState<BankState>({ busy: false, error: '', result: null })
@@ -461,6 +487,18 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             <button className="btn light" onClick={() => setForm({})}><Plus size={16} /> Nova transação</button>
           </div>
         </header>
+
+        {alerts.length > 0 && (
+          <div className="alert-banner" role="alert">
+            <ShieldAlert size={18} />
+            <span className="grow">
+              <strong>{alerts.length} {alerts.length === 1 ? 'tentativa' : 'tentativas'} de acesso com senha errada</strong> na sua conta
+              {' '}(a última em {new Date(alerts[0].at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}). Se não foi você, troque a senha e encerre as sessões.
+            </span>
+            <button className="btn" onClick={() => { dismissAlerts(); setSecurityOpen(true) }}>Ver acessos</button>
+            <button className="icon-btn" onClick={dismissAlerts} aria-label="Dispensar aviso de acessos"><X size={16} /></button>
+          </div>
+        )}
 
         {page === 'overview' && (
           <Overview

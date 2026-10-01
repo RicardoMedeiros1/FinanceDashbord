@@ -35,12 +35,23 @@ export function createFakeAuth(base: string): Auth {
   return {
     async getSession() {
       await recovered
-      return read()
+      const s = read()
+      if (!s) return null
+      // sessão encerrada em outro aparelho ("sair de todos"): o servidor recusa o token
+      const r = await fetch(q(s.token, '/version')).catch(() => null)
+      if (r && r.status === 401) {
+        localStorage.removeItem(KEY)
+        return null
+      }
+      return s
     },
     async signIn(email, password) {
       const r = await fetch(`${base}/login`, { method: 'POST', body: JSON.stringify({ email, password }) }).catch(() => null)
       if (!r) throw new Error('Sem conexão com o servidor. Verifique a internet.')
-      if (!r.ok) throw new Error('E-mail ou senha incorretos.')
+      if (!r.ok) {
+        const j = await r.json().catch(() => null)
+        throw new Error(String(j?.message ?? 'E-mail ou senha incorretos.'))
+      }
       localStorage.setItem(KEY, JSON.stringify({ ...(await r.json()), email }))
       emit()
     },
@@ -69,6 +80,17 @@ export function createFakeAuth(base: string): Auth {
     async deleteAccount() {
       const r = await fetch(q(read()?.token ?? '', '/delete-account'), { method: 'POST' }).catch(() => null)
       if (!r || !r.ok) throw new Error('Não foi possível excluir a conta agora. Tente de novo mais tarde.')
+      localStorage.removeItem(KEY)
+      emit()
+    },
+    async accessLog() {
+      const r = await fetch(q(read()?.token ?? '', '/access-log')).catch(() => null)
+      if (!r || !r.ok) throw new Error('O registro de acessos ainda não foi ativado (rode supabase/security-log.sql no Supabase).')
+      return await r.json()
+    },
+    async signOutEverywhere() {
+      const r = await fetch(q(read()?.token ?? '', '/signout-all'), { method: 'POST' }).catch(() => null)
+      if (!r || !r.ok) throw new Error('Não foi possível encerrar as sessões agora.')
       localStorage.removeItem(KEY)
       emit()
     },

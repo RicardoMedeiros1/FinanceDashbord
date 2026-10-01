@@ -174,5 +174,6 @@ export async function startFakeCloud(port = 4300): Promise<FakeCloud> {
     })
   })
   await new Promise<void>((resolve) => srv.listen(port, resolve))
-  return { rows, files, state, close: () => new Promise((r) => srv.close(() => r())) }
+  return { rows, files, state, // closeAllConnections: o app consulta o servidor de tempos em tempos e manteria o fechamento preso
+    close: () => new Promise((r) => { srv.close(() => r()); srv.closeAllConnections() }) }
 }

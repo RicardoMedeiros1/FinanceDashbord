@@ -624,3 +624,8 @@ main { min-width: 0; }
 .access-list li.bad .access-mark { background: rgba(232, 74, 69, 0.18); color: var(--red); }
 .alert-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--red) 55%, var(--border)); border-radius: 12px; background: rgba(232, 74, 69, 0.08); margin-bottom: 14px; }
 .alert-banner .grow { flex: 1; min-width: 220px; font-size: 14px; line-height: 1.45; }
+
+/* bloqueio por PIN */
+.lock-screen { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 20px; background: var(--bg, #0b0b0b); overflow-y: auto; }
+.lock-screen .code-input { max-width: 260px; align-self: center; width: 100%; }
+.lock-content { display: contents; }

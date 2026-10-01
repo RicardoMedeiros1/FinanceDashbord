@@ -95,6 +95,10 @@ No primeiro acesso a pessoa vê um passo a passo (nome, contas, cartões, salár
 
 O ícone de olho no topo esconde todos os valores em dinheiro na tela (útil em público). A escolha fica salva no aparelho.
 
+## 10. Reforçar a segurança
+
+Verificação em duas etapas, registro e bloqueio de tentativas de acesso, e regra do banco que exige o 2FA: veja [SEGURANCA.md](SEGURANCA.md).
+
 ## Como conferir se está tudo certo
 
 1. Entrar com senha errada mostra "E-mail ou senha incorretos".

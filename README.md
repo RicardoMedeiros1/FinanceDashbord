@@ -24,6 +24,7 @@ React + TypeScript + Vite, gráficos com Recharts. Os dados ficam salvos no `loc
 - **Previsão do mês**: quanto ainda entra e sai até o fim do mês (recorrentes, assinaturas, parcelas) e a sobra prevista; com contas, também o saldo previsto no fim do mês, descontando faturas a vencer.
 - **Orçamentos**: limite por categoria com barra de progresso.
 - **Bancos (Open Finance)**: com a nuvem ligada, traz contas, cartões e transações do banco pelo Meu Pluggy (gratuito para uso pessoal), sem duplicar o que você já lançou. As credenciais ficam numa Edge Function do Supabase. Veja [docs/OPEN_FINANCE.md](docs/OPEN_FINANCE.md).
+- **Segurança** (detalhes em [docs/SEGURANCA.md](docs/SEGURANCA.md)): verificação em duas etapas obrigatória (aplicativo autenticador), registro e bloqueio de tentativas de acesso com aviso no app, sair de todos os aparelhos, bloqueio do app com PIN, política de conteúdo (CSP) e senha de 12+ caracteres. O banco pode exigir o 2FA por regra (`supabase/security-2fa.sql`).
 - **Para outras pessoas**: passo a passo de boas-vindas na Visão geral (some sozinho ao concluir ou ao dispensar), convite por e-mail com definição de senha, modo privacidade (esconde os valores), página de privacidade e termos e exclusão da própria conta (**Dados → Excluir minha conta**).
 
 ## Rodando

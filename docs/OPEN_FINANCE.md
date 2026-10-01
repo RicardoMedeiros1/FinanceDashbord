@@ -59,6 +59,8 @@ Em **Edge Functions → Secrets** (ou **Project Settings → Edge Functions**), 
 
 > Sem `PLUGGY_ALLOWED_EMAILS` **ninguém** consegue usar a função (é de propósito: ela usa a sua conta da Pluggy).
 
+> A função também exige que a sessão tenha passado pelo **código do aplicativo autenticador (2FA)**, para que uma senha vazada sozinha não dê acesso aos dados do banco. Só se o 2FA estiver desligado no seu projeto, crie o secret `PLUGGY_ALLOW_AAL1` = `true` (não recomendado). Veja [SEGURANCA.md](SEGURANCA.md).
+
 ## 5. Usar no Finn
 
 1. Entre no app e toque no ícone do banco no topo (**Bancos (Open Finance)**).

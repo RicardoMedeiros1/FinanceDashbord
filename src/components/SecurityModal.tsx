@@ -1,13 +1,98 @@
-import { Check, LogOut, ShieldAlert, ShieldCheck, X } from 'lucide-react'
+import { Check, KeyRound, LogOut, ShieldAlert, ShieldCheck, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { describeDevice, entryLabel, type AccessEntry } from '../access'
 import type { Auth, MfaStatus } from '../cloud/types'
+import { PIN_LENGTH, TIMEOUTS, validPin, weakPin, type Timeout } from '../lock'
+import { useLock } from './LockGate'
 import { Modal } from './Modal'
 
 interface Props {
   auth?: Auth
   email?: string
   onClose: () => void
+}
+
+const TIMEOUT_LABEL: Record<Timeout, string> = { 0: 'Ao sair do app', 1: 'Depois de 1 minuto', 5: 'Depois de 5 minutos', 15: 'Depois de 15 minutos', 30: 'Depois de 30 minutos' }
+
+/** Bloqueio do app por PIN neste aparelho. */
+function PinSection({ onClose }: { onClose: () => void }) {
+  const lock = useLock()
+  const [pin, setPin] = useState('')
+  const [pin2, setPin2] = useState('')
+  const [current, setCurrent] = useState('')
+  const [mode, setMode] = useState<'idle' | 'change' | 'disable'>('idle')
+  const [timeout, setTimeoutValue] = useState<Timeout>(5)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  if (!lock) return null
+  const digits = (s: string) => s.replace(/\D/g, '').slice(0, PIN_LENGTH)
+  const newProblem = pin && !validPin(pin) ? `Use ${PIN_LENGTH} dígitos.` : validPin(pin) && weakPin(pin) ? 'PIN fácil demais (como 123456 ou 000000). Escolha outro.' : pin2 && pin !== pin2 ? 'Os PINs não são iguais.' : ''
+  const newOk = validPin(pin) && !weakPin(pin) && pin === pin2
+  const reset = () => { setPin(''); setPin2(''); setCurrent(''); setMode('idle') }
+
+  return (
+    <section className="sec-block" aria-label="Bloqueio com PIN">
+      <h4><KeyRound size={16} /> Bloqueio do app com PIN</h4>
+      <p className="muted small">Trava o Finn neste aparelho: ao abrir, depois de um tempo fora do app ou quando você pedir. É uma trava de tela; não criptografa os dados guardados no navegador.</p>
+      <p role="status">{lock.enabled ? <span className="pos">Ativado</span> : <span className="muted">Desligado</span>}</p>
+
+      {!lock.enabled && (
+        <form className="form" onSubmit={async (e) => { e.preventDefault(); if (!newOk) return; await lock.enable(pin, timeout); reset(); setMsg({ ok: true, text: 'Bloqueio ativado.' }) }}>
+          <div className="row">
+            <label>Novo PIN<input type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={(e) => setPin(digits(e.target.value))} aria-label="Novo PIN" /></label>
+            <label>Repita o PIN<input type="password" inputMode="numeric" autoComplete="off" value={pin2} onChange={(e) => setPin2(digits(e.target.value))} aria-label="Repita o PIN" /></label>
+          </div>
+          <label>Bloquear
+            <select value={timeout} onChange={(e) => setTimeoutValue(Number(e.target.value) as Timeout)} aria-label="Quando bloquear">
+              {TIMEOUTS.map((t) => <option key={t} value={t}>{TIMEOUT_LABEL[t]}</option>)}
+            </select>
+          </label>
+          {newProblem && <p className="bad-text small" role="alert">{newProblem}</p>}
+          <button className="btn primary" disabled={!newOk}>Ativar bloqueio</button>
+        </form>
+      )}
+
+      {lock.enabled && mode === 'idle' && (
+        <>
+          <label className="form-inline">Bloquear
+            <select value={lock.timeout} onChange={(e) => lock.setTimeout(Number(e.target.value) as Timeout)} aria-label="Quando bloquear">
+              {TIMEOUTS.map((t) => <option key={t} value={t}>{TIMEOUT_LABEL[t]}</option>)}
+            </select>
+          </label>
+          <div className="head-actions">
+            <button className="btn" onClick={() => { lock.lockNow(); onClose() }}>Bloquear agora</button>
+            <button className="btn" onClick={() => { setMsg(null); setMode('change') }}>Trocar PIN</button>
+            <button className="btn danger" onClick={() => { setMsg(null); setMode('disable') }}>Desativar</button>
+          </div>
+        </>
+      )}
+
+      {lock.enabled && mode !== 'idle' && (
+        <form
+          className="form"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            const r = mode === 'disable' ? await lock.disable(current) : newOk ? await lock.change(current, pin) : { ok: false, message: newProblem }
+            if (r.ok) { reset(); setMsg({ ok: true, text: mode === 'disable' ? 'Bloqueio desativado.' : 'PIN trocado.' }) }
+            else setMsg({ ok: false, text: r.message ?? 'Não foi possível.' })
+          }}
+        >
+          <label>PIN atual<input type="password" inputMode="numeric" autoComplete="off" value={current} onChange={(e) => setCurrent(digits(e.target.value))} aria-label="PIN atual" autoFocus /></label>
+          {mode === 'change' && (
+            <div className="row">
+              <label>Novo PIN<input type="password" inputMode="numeric" autoComplete="off" value={pin} onChange={(e) => setPin(digits(e.target.value))} aria-label="Novo PIN" /></label>
+              <label>Repita o novo PIN<input type="password" inputMode="numeric" autoComplete="off" value={pin2} onChange={(e) => setPin2(digits(e.target.value))} aria-label="Repita o novo PIN" /></label>
+            </div>
+          )}
+          {mode === 'change' && newProblem && <p className="bad-text small" role="alert">{newProblem}</p>}
+          <div className="head-actions">
+            <button className="btn primary" disabled={!validPin(current) || (mode === 'change' && !newOk)}>{mode === 'disable' ? 'Desativar' : 'Trocar PIN'}</button>
+            <button type="button" className="btn ghost" onClick={reset}>Cancelar</button>
+          </div>
+        </form>
+      )}
+      {msg && <p className={msg.ok ? 'pos small' : 'bad-text small'} role={msg.ok ? 'status' : 'alert'}>{msg.text}</p>}
+    </section>
+  )
 }
 
 /** Segurança da conta: verificação em duas etapas, acessos, bloqueio por PIN. */
@@ -71,6 +156,7 @@ export function SecurityModal({ auth, email, onClose }: Props) {
 
   return (
     <Modal title="Segurança" onClose={onClose}>
+      <PinSection onClose={onClose} />
       {auth && (
         <section className="sec-block" aria-label="Verificação em duas etapas">
           <h4><ShieldCheck size={16} /> Verificação em duas etapas</h4>

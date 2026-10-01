@@ -1,4 +1,4 @@
-import { Database, Eye, EyeOff, Landmark, Plus, ShieldAlert, X } from 'lucide-react'
+import { Database, Eye, EyeOff, Landmark, Lock, Plus, ShieldAlert, X } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { cloudReceiptStore, localReceiptStore, prepareFile, type ReceiptMeta } from './cloud/receipts'
 import { applyChanges, COLS, countLocal, SyncEngine, type Change, type Col, type Collections, type SyncStatus } from './cloud/sync'
@@ -6,6 +6,7 @@ import type { Auth } from './cloud/types'
 import { BankModal, type BankState } from './components/BankModal'
 import { DataModal } from './components/DataModal'
 import { failuresToReport, type AccessEntry } from './access'
+import { useLock } from './components/LockGate'
 import { SecurityModal } from './components/SecurityModal'
 import { InstallmentDetail } from './components/InstallmentDetail'
 import { Onboarding, type OnboardingStep } from './components/Onboarding'
@@ -123,6 +124,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
   const [form, setForm] = useState<{ tx?: Transaction; repeat?: boolean; income?: boolean } | null>(null)
   const [dataOpen, setDataOpen] = useState(false)
   const [securityOpen, setSecurityOpen] = useState(false)
+  const lock = useLock()
   const [tick, setTick] = useState(0)
 
   // ---------- sincronização com a nuvem ----------
@@ -481,6 +483,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
           </div>
           <div className="topbar-right">
             <button className="icon-btn" onClick={togglePrivacy} aria-label={hidden ? 'Mostrar valores' : 'Ocultar valores'} title={hidden ? 'Mostrar valores' : 'Ocultar valores'} aria-pressed={hidden}>{hidden ? <EyeOff size={16} /> : <Eye size={16} />}</button>
+            {lock?.enabled && <button className="icon-btn" onClick={lock.lockNow} aria-label="Bloquear o app" title="Bloquear o app"><Lock size={16} /></button>}
             {cloud && <SyncBadge status={status} onClick={() => void engineRef.current?.sync()} />}
             {cloud && <button className="icon-btn" onClick={() => setBankOpen(true)} aria-label="Bancos (Open Finance)" title="Bancos (Open Finance)"><Landmark size={16} /></button>}
             <button className="btn ghost" onClick={() => setDataOpen(true)}><Database size={15} /> Dados</button>

@@ -10,7 +10,7 @@ export function friendlyAuthError(e: AuthErrorLike): string {
   const msg = e.message ?? ''
   const code = e.code ?? ''
   if (code === 'same_password' || /different from the old password/i.test(msg)) return 'A nova senha precisa ser diferente da atual.'
-  if (code === 'weak_password' || /password should be|weak password/i.test(msg)) return 'Senha fraca. Use pelo menos 8 caracteres, misturando letras e números.'
+  if (code === 'weak_password' || /password should be|weak password/i.test(msg)) return 'Senha fraca. Use pelo menos 12 caracteres (uma frase longa funciona bem), sem senhas comuns.'
   if (code === 'over_email_send_rate_limit' || /email rate limit/i.test(msg)) return 'Muitos e-mails enviados. Aguarde alguns minutos e tente de novo.'
   if (code === 'session_not_found' || code === 'not_authenticated' || /auth session missing/i.test(msg)) return 'Sessão expirada. Peça um novo link ou entre de novo.'
   if (code === 'mfa_verification_failed' || /invalid totp code/i.test(msg)) return 'Código incorreto ou vencido. Confira se a hora do celular está certa e digite o código atual.'

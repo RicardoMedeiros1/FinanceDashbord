@@ -36,7 +36,9 @@ test('link de recuperação: define a nova senha e entra', async ({ browser, bas
   await expect(save).toBeDisabled()
   const [n1, n2] = [p.getByLabel('Nova senha', { exact: true }), p.getByLabel('Repita a nova senha')]
   await n1.fill('curta')
-  await expect(p.getByText('Use pelo menos 8 caracteres.')).toBeVisible()
+  await expect(p.getByText(/Use pelo menos 12 caracteres/)).toBeVisible()
+  await n1.fill('onzeletras1') // 11
+  await expect(p.getByText(/Use pelo menos 12 caracteres/)).toBeVisible()
   await n1.fill('novaSenha123')
   await n2.fill('outraSenha123')
   await expect(p.getByText('As senhas não são iguais.')).toBeVisible()

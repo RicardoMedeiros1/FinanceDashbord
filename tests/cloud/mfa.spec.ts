@@ -149,3 +149,21 @@ test('em Segurança: com 2FA aparece "Ativada" e dá para trocar o aplicativo au
   await until(() => cloud.state.mfa.enrolled === false, 'fator removido')
   await expect(p.getByRole('heading', { name: /Ative a verificação em duas etapas/ })).toBeVisible()
 })
+
+test('na nuvem (build com CSP) o login, o 2FA e a sincronização não geram violações', async ({ browser, baseURL }) => {
+  cloud.state.mfa.enforce = true
+  const { p } = await device(browser, baseURL)
+  const violations: string[] = []
+  p.on('console', (m) => {
+    if (/content security policy|refused to/i.test(m.text())) violations.push(m.text())
+  })
+  await login(p)
+  await expect(p.getByAltText('QR code para o aplicativo autenticador')).toBeVisible() // imagem data: permitida
+  await code(p, '123456')
+  await p.getByRole('button', { name: 'Ativar' }).click()
+  await p.waitForSelector('.sync-badge.ok')
+  await p.click('button:has-text("Dados")')
+  await p.click('button:has-text("Segurança")')
+  await expect(p.getByRole('region', { name: 'Acessos recentes' })).toBeVisible()
+  expect(violations).toEqual([])
+})

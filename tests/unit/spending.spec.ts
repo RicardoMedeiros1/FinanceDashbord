@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { buildAlerts } from '../../src/alerts'
 import { groupLimits, groupSpent, expensesIn, filterMerchant, matchesTerms, merchantName, parseTerms, periodStart, rankMerchants, searchSpending, summarize } from '../../src/spending'
 import type { Transaction } from '../../src/types'
 
@@ -93,4 +94,50 @@ test('limite por grupo: conta só o mês atual, ignora grupos sem limite e marca
   expect(r[0]).toMatchObject({ spent: 90, state: 'warn' }) // 90%
   expect(r[0].pct).toBeCloseTo(90)
   expect(r[1]).toMatchObject({ spent: 130, state: 'over' }) // exatamente o limite já conta como estourado
+})
+
+test.describe('alertas', () => {
+  const ids = (list: Transaction[]) => buildAlerts(list, TODAY).map((a) => a.id)
+
+  test('compra muito acima do que costuma pagar naquele lugar', () => {
+    const base = [tx('a', '2026-06-10', 'Mercado Central', 100), tx('b', '2026-07-12', 'Mercado Central', 120), tx('c', '2026-08-10', 'MERCADO CENTRAL', 110)]
+    expect(ids([...base, tx('d', '2026-09-27', 'Mercado Central', 450)])).toEqual(['unusual-d'])
+    expect(ids([...base, tx('d', '2026-09-27', 'Mercado Central', 250)])).toEqual([]) // só 2,3x
+    expect(ids([...base, tx('d', '2026-09-01', 'Mercado Central', 900)])).toEqual([]) // não é recente
+    expect(ids([base[0], base[1], tx('d', '2026-09-27', 'Mercado Central', 900)])).toEqual([]) // pouco histórico
+    expect(ids([...base, { ...tx('d', '2026-09-27', 'Mercado Central', 900), ruleId: 'r' }])).toEqual([]) // recorrência é esperada
+  })
+
+  test('mesma cobrança duas vezes em até 2 dias', () => {
+    expect(ids([tx('a', '2026-09-26', 'Loja Azul', 89.9), tx('b', '2026-09-27', 'LOJA AZUL*123', 89.9)])).toEqual(['dup-a-b'])
+    expect(ids([tx('a', '2026-09-27', 'Loja Azul', 89.9), tx('b', '2026-09-27', 'Loja Azul', 89.9)])).toEqual(['dup-a-b'])
+    expect(ids([tx('a', '2026-09-20', 'Loja Azul', 89.9), tx('b', '2026-09-27', 'Loja Azul', 89.9)])).toEqual([]) // longe
+    expect(ids([tx('a', '2026-09-26', 'Loja Azul', 89.9), tx('b', '2026-09-27', 'Loja Azul', 80)])).toEqual([]) // valor diferente
+    expect(ids([tx('a', '2026-09-26', 'Café', 8), tx('b', '2026-09-26', 'Café', 8)])).toEqual([]) // valor pequeno
+  })
+
+  test('assinatura que mudou de valor', () => {
+    const subs = [tx('a', '2026-07-05', 'StreamMax', 29.9), tx('b', '2026-08-05', 'StreamMax', 29.9)]
+    const r = buildAlerts([...subs, tx('c', '2026-09-05', 'StreamMax', 39.9)], TODAY)
+    expect(r.map((a) => a.id)).toEqual(['price-c'])
+    expect(r[0].title).toContain('mais caro')
+    expect(r[0].text).toMatch(/29,90.*39,90/)
+    expect(buildAlerts([...subs, tx('c', '2026-09-05', 'StreamMax', 29.9)], TODAY)).toEqual([]) // igual
+    expect(buildAlerts([...subs, tx('c', '2026-09-05', 'StreamMax', 30.4)], TODAY)).toEqual([]) // <3%
+    expect(buildAlerts([...subs, tx('c', '2026-08-20', 'StreamMax', 39.9)], TODAY)).toEqual([]) // não é mensal
+  })
+
+  test('gasto do mês acima do ritmo dos 3 meses anteriores, só depois do dia 10', () => {
+    const mk = (m: string, total: number) => tx(`m${m}`, `${m}-05`, `Gastos ${m}`, total)
+    const past = [mk('2026-06', 1000), mk('2026-07', 1100), mk('2026-08', 900)]
+    expect(ids([...past, mk('2026-09', 1500)])).toEqual(['pace-2026-09']) // média 1000 → +50%
+    expect(ids([...past, mk('2026-09', 1200)])).toEqual([]) // só 20%
+    expect(buildAlerts([...past, mk('2026-09', 1500)], '2026-09-08')).toEqual([]) // começo do mês
+    expect(ids([mk('2026-08', 900), mk('2026-09', 1500)])).toEqual([]) // pouco histórico
+    expect(buildAlerts([...past, mk('2026-09', 1500)], TODAY)[0].title).toBe('Gastos 50% acima do seu ritmo')
+  })
+
+  test('receitas e compras futuras não geram alerta', () => {
+    expect(ids([tx('a', '2026-09-26', 'Loja', 100, 'income'), tx('b', '2026-09-27', 'Loja', 100, 'income'), tx('c', '2026-10-05', 'Loja', 100), tx('d', '2026-10-06', 'Loja', 100)])).toEqual([])
+  })
 })

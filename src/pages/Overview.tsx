@@ -4,6 +4,9 @@ import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxi
 import { CATEGORIES } from '../categories'
 import { GoalsCard } from '../components/GoalsCard'
 import { Insights } from '../components/Insights'
+import { AlertsCard } from '../components/AlertsCard'
+import { buildAlerts } from '../alerts'
+import { useStored } from '../useStored'
 import { Money } from '../components/Money'
 import { StatCard } from '../components/StatCard'
 import { buildInsights } from '../insights'
@@ -37,6 +40,7 @@ interface Props {
 
 export function Overview({ onboarding, txs, subs, installments, cards, accounts, transfers, rules, budgets, groups, goals, onNavigate, onAddGoal, onDeposit }: Props) {
   const [range, setRange] = useState<'30d' | '6m'>('30d')
+  const [dismissed, setDismissed] = useStored<string[]>('fd:alerts-off', () => [])
 
   const months = useMemo(
     () =>
@@ -76,6 +80,7 @@ export function Overview({ onboarding, txs, subs, installments, cards, accounts,
 
   const forecast = useMemo(() => buildForecast({ txs, rules, subs, installments, cards, accounts, transfers }), [txs, rules, subs, installments, cards, accounts, transfers])
   const hide = valuesHidden() // os textos dos insights já vêm formatados: refaz ao alternar a privacidade
+  const alerts = useMemo(() => buildAlerts(txs).filter((a) => !dismissed.includes(a.id)), [txs, dismissed, hide]) // eslint-disable-line react-hooks/exhaustive-deps
   const insights = useMemo(() => buildInsights(txs, subs, budgets, installments, cards, forecast, groups), [txs, subs, budgets, installments, cards, forecast, groups, hide]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const upcoming = [
@@ -98,6 +103,7 @@ export function Overview({ onboarding, txs, subs, installments, cards, accounts,
   return (
     <>
       {onboarding}
+      <AlertsCard items={alerts} onDismiss={(id) => setDismissed((l) => [...l.slice(-199), id])} />
       <div className="grid stats">
         <StatCard label="Saldo do mês" icon={<Landmark size={13} />} value={<Money value={m.balance} />} spark={months.map((x) => x.balance)} color="#3b6ef5" delta={p.balance > 0 ? pct(m.balance, p.balance) : null} />
         <StatCard label="Receitas" icon={<TrendingUp size={13} />} value={<Money value={m.Receitas} />} spark={months.map((x) => x.Receitas)} color="#8b3ff5" delta={pct(m.Receitas, p.Receitas)} foot={incomeSplit} />

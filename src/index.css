@@ -647,3 +647,11 @@ main { min-width: 0; }
 .networth-stats > div { display: flex; flex-direction: column; gap: 2px; }
 .networth-stats strong { font-size: 20px; }
 .networth-note { margin: 8px 0 0; }
+
+/* alertas */
+.alerts-card { margin-bottom: 14px; border-color: color-mix(in srgb, var(--amber) 45%, var(--border)); }
+.alerts-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.alerts-list li { display: flex; align-items: flex-start; gap: 10px; }
+.alerts-list .grow { display: block; }
+.alerts-list p { margin: 2px 0 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.alerts-list .icon-btn { flex: none; }

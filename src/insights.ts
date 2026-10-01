@@ -3,6 +3,7 @@ import { brl, daysUntil, formatDate, inMonth, installmentStatus, monthKey, month
 import { accountBalance } from './accounts'
 import { cardInvoices, cardSummary } from './cards'
 import { buildForecast } from './forecast'
+import { buildAlerts } from './alerts'
 import { netWorthSeries, netWorthStats } from './networth'
 import type { Forecast } from './forecast'
 import { expensesIn, groupLimits, searchSpending, SUGGESTIONS as SPEND_GROUPS, squash } from './spending'
@@ -284,6 +285,11 @@ export function answer(question: string, txs: Transaction[], subs: Subscription[
   const expense = sumBy(list, 'expense')
   const byCat = [...spendByCategory(list)].sort((a, b) => b[1] - a[1])
 
+  if (/alerta|fora do padrao|cobranca repetida|duplicad/.test(q)) {
+    const al = buildAlerts(txs)
+    if (!al.length) return 'Nenhum alerta por enquanto: não vi compras fora do padrão, cobranças repetidas nem gastos acima do seu ritmo. 👍'
+    return al.map((a) => `• ${a.title}: ${a.text}`).join('\n')
+  }
   if (/patrimonio|evolucao do saldo|saldo evoluiu|quanto cresceu/.test(q)) {
     const accs = extra.accounts ?? []
     const st = netWorthStats(netWorthSeries(accs, txs, extra.transfers ?? []), accs)

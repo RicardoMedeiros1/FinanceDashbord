@@ -1,16 +1,17 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
-import { brl } from '../lib'
+import { goalPlan } from '../goals'
+import { useInvestStored } from '../investStore'
+import { brl, formatDate } from '../lib'
 import type { Goal } from '../types'
+import { GoalForm } from './GoalForm'
 import { Modal } from './Modal'
 
 interface Props {
   goals: Goal[]
-  onAdd: (g: Omit<Goal, 'id' | 'saved'>) => void
+  onAdd: (g: { name: string; target: number; color: string; deadline?: string }) => void
   onDeposit: (id: string, amount: number) => void
 }
-
-const COLORS = ['#e0600f', '#3b6ef5', '#8b3ff5', '#e84a45', '#3ecf6e']
 
 function Ring({ pct, color }: { pct: number; color: string }) {
   const r = 15
@@ -24,15 +25,13 @@ function Ring({ pct, color }: { pct: number; color: string }) {
 }
 
 export function GoalsCard({ goals, onAdd, onDeposit }: Props) {
+  const [saved] = useInvestStored()
   const [modal, setModal] = useState<'new' | string | null>(null)
-  const [name, setName] = useState('')
   const [value, setValue] = useState('')
-  const [color, setColor] = useState(COLORS[0])
   const num = Number(value.replace(',', '.'))
 
   const close = () => {
     setModal(null)
-    setName('')
     setValue('')
   }
   const target = goals.find((g) => g.id === modal)
@@ -46,12 +45,18 @@ export function GoalsCard({ goals, onAdd, onDeposit }: Props) {
       <ul className="list">
         {goals.map((g) => {
           const pct = (g.saved / g.target) * 100
+          const plan = goalPlan(g, undefined, saved.rates, saved.params)
           return (
             <li key={g.id}>
               <Ring pct={pct} color={g.color} />
               <div className="grow">
                 <strong>{g.name}</strong>
                 <span className="muted small">{brl(g.saved)} de {brl(g.target)}</span>
+                {g.deadline && plan.status !== 'done' && (
+                  <span className="muted small">
+                    até {formatDate(g.deadline)}{plan.perMonth ? ` · ${brl(plan.perMonth)}/mês` : plan.status === 'overdue' ? ' · prazo vencido' : ''}
+                  </span>
+                )}
               </div>
               <button className="pill-btn" onClick={() => setModal(g.id)}>+ Guardar</button>
             </li>
@@ -62,14 +67,7 @@ export function GoalsCard({ goals, onAdd, onDeposit }: Props) {
 
       {modal === 'new' && (
         <Modal title="Nova meta" onClose={close}>
-          <form className="form" onSubmit={(e) => { e.preventDefault(); if (name.trim() && num > 0) { onAdd({ name: name.trim(), target: num, color }); close() } }}>
-            <label>Nome<input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex.: Viagem" autoFocus /></label>
-            <label>Valor da meta (R$)<input value={value} onChange={(e) => setValue(e.target.value)} inputMode="decimal" placeholder="0,00" /></label>
-            <div className="swatches">
-              {COLORS.map((c) => <button type="button" key={c} className={`swatch ${c === color ? 'on' : ''}`} style={{ background: c }} onClick={() => setColor(c)} aria-label={`Cor ${c}`} />)}
-            </div>
-            <button className="btn primary" disabled={!name.trim() || !(num > 0)}>Criar meta</button>
-          </form>
+          <GoalForm onSave={(g) => { onAdd(g); close() }} />
         </Modal>
       )}
       {target && (

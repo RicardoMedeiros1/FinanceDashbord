@@ -590,3 +590,13 @@ main { min-width: 0; }
 .learn:hover { color: var(--text); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (max-width: 760px) { .concept-tool .row.three { grid-template-columns: 1fr; } }
+
+/* metas */
+.goal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+.goal { display: flex; flex-direction: column; gap: 12px; }
+.goal-numbers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.goal-numbers > span { display: flex; flex-direction: column; gap: 2px; }
+.goal-plan { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.warn-text { color: var(--amber); }
+.goal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+@media (max-width: 760px) { .goal-grid { grid-template-columns: 1fr; } }

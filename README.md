@@ -8,7 +8,7 @@ React + TypeScript + Vite, gráficos com Recharts. Os dados ficam salvos no `loc
 - **Visão geral**: saldo, receitas, despesas e taxa de poupança (com variação vs. mês anterior), gráfico dos últimos 6 meses, gastos por categoria, próximas cobranças e transações recentes.
 - **Insights**: alertas automáticos por regras (gastos acima da renda, categorias que subiram, orçamentos perto do limite, assinaturas renovando), em um card no estilo do projeto de referência.
 - **Assistente**: perguntas em linguagem natural sobre gastos, assinaturas, orçamentos e economia. Funciona por palavras-chave sobre os seus dados, localmente — não é um LLM.
-- **Metas de economia**: crie metas e vá guardando valores.
+- **Metas de economia**: crie metas com valor e **prazo opcional**; o app calcula quantos meses faltam, **quanto guardar por mês** (sem render e, como estimativa, rendendo como o Tesouro Selic, já com imposto), se você está **no ritmo** e leva ao simulador já preenchido. Dá para editar, ajustar o valor guardado e excluir (menu *Investir → Metas*).
 - **Saúde financeira**: nota de 0 a 100 (poupança, orçamentos respeitados, peso das assinaturas), na aba Orçamentos.
 - **Transações**: busca, filtro por mês/tipo, adicionar, **editar** e excluir.
 - **Receitas por tipo**: *Salário fixo*, *Renda variável (Uber, freelas)* e *Outras receitas*. A Visão geral mostra a divisão do mês, e os insights comparam o salário fixo com as despesas e calculam a renda variável líquida (descontando a categoria *Custos do trabalho*).

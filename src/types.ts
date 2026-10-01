@@ -56,6 +56,8 @@ export interface Goal {
   target: number
   saved: number
   color: string
+  deadline?: string // yyyy-mm-dd: até quando juntar
+  createdAt?: string // yyyy-mm-dd: para saber se está no ritmo
 }
 
 export type Cycle = 'weekly' | 'monthly' | 'yearly'

@@ -15,7 +15,7 @@ import { TransactionForm } from './components/TransactionForm'
 import { needsAutoSync, planSync, syncRequest } from './openfinance'
 import { convertedIds, matchToTransfer, singleToTransfer, type TransferMatch } from './transfers'
 import { seedBudgets, seedGoals, seedSubscriptions, seedTransactions } from './data'
-import { applyInstallments, applyRecurring, applySubscriptions, initialChargedUntil, installmentStatus, missingInstallmentTxs, setHideValues, skipToToday, uid } from './lib'
+import { toISO, applyInstallments, applyRecurring, applySubscriptions, initialChargedUntil, installmentStatus, missingInstallmentTxs, setHideValues, skipToToday, uid } from './lib'
 import { Assistant } from './pages/Assistant'
 import { Budgets } from './pages/Budgets'
 import { Overview } from './pages/Overview'
@@ -376,6 +376,10 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cloud, syncReady, banks])
 
+  // ---------- metas ----------
+  const saveGoal = (g: { name: string; target: number; saved?: number; color: string; deadline?: string }, id?: string) =>
+    setGoals((l) => (id ? l.map((x) => (x.id === id ? { ...x, ...g, saved: g.saved ?? x.saved } : x)) : [...l, { ...g, id: uid(), saved: 0, createdAt: toISO(new Date()) }]))
+
   // ---------- transferências entre as suas contas ----------
   const knownIds = useMemo(() => convertedIds(transfers), [transfers])
   const convertTransfers = (list: TransferMatch[]) => {
@@ -469,7 +473,7 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
             budgets={budgets}
             goals={goals}
             onNavigate={setPage}
-            onAddGoal={(g) => setGoals((l) => [...l, { ...g, id: uid(), saved: 0 }])}
+            onAddGoal={(g) => saveGoal({ ...g })}
             onDeposit={(id, amount) => setGoals((l) => l.map((g) => (g.id === id ? { ...g, saved: g.saved + amount } : g)))}
           />
         )}
@@ -564,8 +568,12 @@ export default function App({ cloud }: { cloud?: CloudSession }) {
         )}
         {page === 'invest' && (
           <Invest
-            tab={(sub === 'simulador' ? 'simulator' : sub === 'conceitos' ? 'concepts' : 'reserve') satisfies InvestTab}
-            onTab={(t) => go('invest', t === 'simulator' ? 'simulador' : t === 'concepts' ? 'conceitos' : '')}
+            tab={(sub === 'simulador' ? 'simulator' : sub === 'conceitos' ? 'concepts' : sub === 'metas' ? 'goals' : 'reserve') satisfies InvestTab}
+            onTab={(t) => go('invest', t === 'simulator' ? 'simulador' : t === 'concepts' ? 'conceitos' : t === 'goals' ? 'metas' : '')}
+            goals={goals}
+            onSaveGoal={saveGoal}
+            onDeleteGoal={(id) => setGoals((l) => l.filter((g) => g.id !== id))}
+            onDepositGoal={(id, amount) => setGoals((l) => l.map((g) => (g.id === id ? { ...g, saved: g.saved + amount } : g)))}
             installments={installments}
             onGo={go}
             txs={txs}
